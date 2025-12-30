@@ -1173,14 +1173,22 @@ document.addEventListener("DOMContentLoaded", () => {
             lens.style.setProperty('--lx', String(ratio));
         }
 
-        // RACE CONDITION FIX: Wait for fonts
+        // RACE CONDITION FIX: ResizeObserver + Fonts Ready + Timeout
+        if (window.ResizeObserver) {
+            const ro = new ResizeObserver(() => layout());
+            ro.observe(track);
+        }
+
         if (document.fonts) {
             document.fonts.ready.then(() => {
                 layout();
-                setTimeout(layout, 50);
+                setTimeout(layout, 300); // Forced fallback
             });
         } else {
-            window.addEventListener('load', layout);
+            window.addEventListener('load', () => {
+                layout();
+                setTimeout(layout, 300);
+            });
         }
         window.addEventListener('resize', layout);
 
@@ -1244,15 +1252,25 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         layout();
-        try {
-            if (window.ResizeObserver) {
-                const ro2 = new ResizeObserver(() => { try { layout(); } catch (e) {} });
-                links.forEach(l => { try { ro2.observe(l); } catch (e) {} });
-                try { ro2.observe(track); } catch (e) {}
-            }
-        } catch (e) {}
+
+        // RACE CONDITION FIX: ResizeObserver + Fonts Ready + Timeout
+        if (window.ResizeObserver) {
+            const ro2 = new ResizeObserver(() => layout());
+            ro2.observe(track);
+        }
+
+        if (document.fonts) {
+            document.fonts.ready.then(() => {
+                layout();
+                setTimeout(layout, 300); // Forced fallback
+            });
+        }
+
         window.addEventListener('resize', layout);
-        window.addEventListener('load', layout);
+        window.addEventListener('load', () => {
+            layout();
+            setTimeout(layout, 300);
+        });
     }
     initNavSelector();
 
