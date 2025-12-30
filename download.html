@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
@@ -40,6 +40,12 @@
   }
   body.theme-light .lang-track button {
     color: var(--gear-color);
+  }
+  /* REQ 3: Light Theme Consistency */
+  body.theme-light .navbar-size {
+      box-shadow: none !important;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      background: linear-gradient(120deg, #f1f1f1, #eaeaea);
   }
   body.theme-light .lang-track button.active, body.theme-light .lang-track button:hover {
     color: var(--accent);
@@ -156,7 +162,9 @@
     transform: translateX(-50%);
     display: inline-flex;
     gap: 0;
-    padding: 5px;
+    /* REQ 1: Padding & Min-Width */
+    padding: 6px 10px;
+    min-width: 400px;
     border-radius: 999px;
     background: rgba(0,0,0,0.25);
     border: 1px solid rgba(255,255,255,0.08);
@@ -263,7 +271,8 @@
   .navbar-content {
       position: relative; /* Referans noktası for absolute centering */
       width: 100%;
-      max-width: 1200px;
+      /* REQ 1: Wider Navbar */
+      max-width: 1400px;
       margin: 0 auto;
       display: flex;
       align-items: center;
@@ -378,7 +387,16 @@
     font-weight: 700;
     cursor: pointer;
   }
-  body.gpu-on .liquid-glass { will-change: transform, filter; transform: translateZ(0); backface-visibility: hidden; }
+
+  /* REQ 5: Actual GPU Acceleration CSS */
+  body.gpu-on .liquid-glass,
+  body.gpu-on .stat-card-modern,
+  body.gpu-on .lens,
+  body.gpu-on .nav-lens,
+  body.gpu-on .lang-lens {
+      will-change: transform, opacity, filter;
+      transform: translateZ(0); /* Force GPU layer creation */
+  }
   
   .settings-fab {
     position: fixed;
@@ -404,7 +422,8 @@
     position: fixed;
     left: 18px;
     bottom: 74px;
-    width: min(440px, 92vw);
+    /* REQ 4: Max Width Update */
+    width: min(500px, 95vw);
     border-radius: 16px;
     z-index: 2147483647 !important;
     padding: 14px 16px;
@@ -429,6 +448,8 @@
     align-items: flex-start;
     gap: 12px;
     margin-bottom: 10px;
+    /* REQ 4: Wrap */
+    flex-wrap: wrap;
   }
   .settings-row .label {
     font-weight: 700;
@@ -517,11 +538,16 @@
       cursor: pointer;
       transition: color 0.2s;
       font-size: 0.9rem;
-      padding: 8px 14px;
+      padding: 8px 16px; /* Requirement: Adjusted padding */
       border-radius: 999px;
       will-change: color;
   }
-  .lang-track button.active, .lang-track button:hover {
+  /* Requirement: Active language color */
+  .lang-track button.active {
+      color: var(--accent) !important;
+      text-shadow: 0 0 10px rgba(255, 174, 0, 0.4);
+  }
+  .lang-track button:hover {
       color: var(--accent);
   }
   .lang-lens {
@@ -580,7 +606,16 @@
   @media (max-width: 768px) {
     .navbar-size { height: auto; }
     .navbar-content { padding: 12px 18px; gap: 10px; }
-    .nav-track { display: flex; width: 100%; justify-content: center; gap: 18px; }
+    .nav-track {
+        position: relative;
+        left: auto;
+        transform: none;
+        display: flex;
+        width: 100%;
+        justify-content: center;
+        gap: 18px;
+        min-width: 0;
+    }
     .nav-track a { font-size: 1rem; padding: 12px 18px; }
     .search-box { width: 100%; }
     .search-box input { width: 100%; }

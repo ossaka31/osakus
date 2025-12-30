@@ -1120,9 +1120,11 @@ document.addEventListener("DOMContentLoaded", () => {
         const btns = Array.from(track ? track.querySelectorAll('button') : []);
         if (!track || !lens || btns.length === 0) return;
 
+        // Smooth sliding setup
+        lens.style.transition = 'transform 200ms cubic-bezier(0.2, 0.9, 0.2, 1), width 200ms cubic-bezier(0.2, 0.9, 0.2, 1)';
+
         const bias = 0;
         let centers = [];
-        let lensX = 0;
         let stableLensWidth = 0;
         let minX = 0;
         let maxX = 0;
@@ -1138,11 +1140,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 const maxW = widths.length ? widths.reduce((a,b)=> Math.max(a,b), 0) : 0;
                 if (maxW > stableLensWidth) stableLensWidth = maxW;
             } catch (e) {}
+
             let activeBtn = track.querySelector('button.active');
             if (!activeBtn) activeBtn = btns[0];
-            btns.forEach(b => b.classList.remove('active'));
-            activeBtn.classList.add('active');
+
+            // Highlight logic
             const idx = btns.indexOf(activeBtn);
+            if (idx === -1) return;
             const c = centers[idx];
             const btnRect = activeBtn.getBoundingClientRect();
             const h = btnRect.height;
@@ -1150,13 +1154,19 @@ document.addEventListener("DOMContentLoaded", () => {
             const lensWraw = min2(btnRect.width, cap);
             const stableUsed = stableLensWidth ? Math.min(stableLensWidth, cap) : 0;
             const lensW = Math.max(h, Math.max(lensWraw, stableUsed));
+
             lens.style.width = lensW + 'px';
             lens.style.height = h + 'px';
             lens.style.top = (btnRect.top - rectTrack.top) + 'px';
-            lensX = c.x - (lensW / 2) + bias;
+
+            // Calculate precise target X
+            const lensX = c.x - (lensW / 2) + bias;
             lens.style.transform = 'translateX(' + roundPx(lensX) + 'px)';
+
             minX = centers[0].x - (lensW / 2) + bias;
             maxX = centers[centers.length - 1].x - (lensW / 2) + bias;
+
+            // Parallax effect prop
             const denom = (maxX - minX);
             const safeDenom = denom > 1 ? denom : 1;
             const ratio = (lensX - minX) / safeDenom;
@@ -1172,128 +1182,20 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
             window.addEventListener('load', layout);
         }
-
         window.addEventListener('resize', layout);
 
         btns.forEach((btn, i) => {
             btn.addEventListener('click', () => {
                 btns.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                const c = centers[i];
-                const r = btn.getBoundingClientRect();
-                const h = r.height;
-                const cap = roundPx(h * 1.15);
-                const lensWraw = min2(r.width, cap);
-                const stableUsed = stableLensWidth ? Math.min(stableLensWidth, cap) : 0;
-                const lensW = Math.max(h, Math.max(lensWraw, stableUsed));
-                lens.style.transition = 'transform 180ms cubic-bezier(0.2,0.9,0.2,1)';
-                lens.style.width = lensW + 'px';
-                lens.style.height = h + 'px';
-                lens.style.top = (r.top - track.getBoundingClientRect().top) + 'px';
-                lensX = c.x - (lensW / 2) + bias;
-                lens.style.transform = 'translateX(' + roundPx(lensX) + 'px)';
-                const denom = (maxX - minX);
-                const safeDenom = denom > 1 ? denom : 1;
-                const ratio = (lensX - minX) / safeDenom;
-                lens.style.setProperty('--lx', String(ratio));
-                setTimeout(() => { lens.style.transition = 'transform 0ms'; }, 200);
+
+                // Immediately calculate new position for smooth slide
+                layout();
+
                 const lang = btn.getAttribute('data-lang');
                 if (lang) changeLanguage(lang);
             });
         });
-
-        // Dragging Logic
-        let dragging = false;
-        let targetX = 0;
-        let rafId = null;
-        function getClientX(e) {
-            if (e.touches && e.touches.length) return e.touches[0].clientX;
-            if (e.changedTouches && e.changedTouches.length) return e.changedTouches[0].clientX;
-            return e.clientX;
-        }
-        function step() {
-            let lensWidth = parseFloat(lens.style.width);
-            if (Number.isNaN(lensWidth)) lensWidth = centers[0].w;
-            const half = lensWidth / 2;
-            const clamped = clampNumber(targetX - half, minX, maxX);
-            lensX += (clamped - lensX) * 0.18;
-            lens.style.transform = 'translateX(' + roundPx(lensX) + 'px)';
-            const denom = (maxX - minX);
-            const safeDenom = denom > 1 ? denom : 1;
-            const ratio = (lensX - minX) / safeDenom;
-            lens.style.setProperty('--lx', String(ratio));
-            if (dragging) rafId = requestAnimationFrame(step);
-        }
-        function onMove(e) {
-            if (!dragging) return;
-            const rect = track.getBoundingClientRect();
-            targetX = getClientX(e) - rect.left;
-        }
-        function onUp() {
-            if (!dragging) return;
-            dragging = false;
-            document.removeEventListener('mousemove', onMove);
-            document.removeEventListener('mouseup', onUp);
-            document.removeEventListener('touchmove', onMove);
-            document.removeEventListener('touchend', onUp);
-            document.removeEventListener('touchcancel', onUp);
-            if (rafId) cancelAnimationFrame(rafId);
-
-            let lensWidth = parseFloat(lens.style.width);
-            if (Number.isNaN(lensWidth)) lensWidth = centers[0].w;
-            const mid = lensX + (lensWidth / 2);
-            let nearest = 0;
-            let best = Infinity;
-            centers.forEach((c, i) => {
-                const d = absNumber(mid - c.x);
-                if (d < best) { best = d; nearest = i; }
-            });
-
-            const c = centers[nearest];
-            lens.style.transition = 'transform 280ms cubic-bezier(0.18,0.8,0,1)';
-            let h = centers[nearest].h;
-            if (typeof h !== 'number') h = parseFloat(lens.style.height);
-            if (Number.isNaN(h)) h = centers[0].h;
-            if (typeof h !== 'number') h = 32;
-            const lensW = min2(centers[nearest].w, roundPx(h * 1.3));
-            lens.style.width = lensW + 'px';
-            lens.style.height = h + 'px';
-            lensX = c.x - (lensW / 2) + bias;
-            lens.style.transform = 'translateX(' + roundPx(lensX) + 'px)';
-            const denom = (maxX - minX);
-            const safeDenom = denom > 1 ? denom : 1;
-            const ratio = (lensX - minX) / safeDenom;
-            lens.style.setProperty('--lx', String(ratio));
-
-            btns.forEach(b => b.classList.remove('active'));
-            const b = btns[nearest];
-            b.classList.add('active');
-            const lang = b.getAttribute('data-lang');
-            if (lang) changeLanguage(lang);
-            setTimeout(() => { lens.style.transition = 'transform 0ms'; }, 300);
-        }
-
-        track.addEventListener('mousedown', (e) => {
-            const rect = track.getBoundingClientRect();
-            dragging = true;
-            lens.style.transition = 'transform 0ms';
-            targetX = getClientX(e) - rect.left;
-            if (rafId) cancelAnimationFrame(rafId);
-            rafId = requestAnimationFrame(step);
-            document.addEventListener('mousemove', onMove);
-            document.addEventListener('mouseup', onUp);
-        });
-        track.addEventListener('touchstart', (e) => {
-            const rect = track.getBoundingClientRect();
-            dragging = true;
-            lens.style.transition = 'transform 0ms';
-            targetX = getClientX(e) - rect.left;
-            if (rafId) cancelAnimationFrame(rafId);
-            rafId = requestAnimationFrame(step);
-            document.addEventListener('touchmove', onMove, { passive: true });
-            document.addEventListener('touchend', onUp);
-            document.addEventListener('touchcancel', onUp);
-        }, { passive: true });
     }
     initLangSelector();
 
@@ -1306,9 +1208,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const bias = 0;
         let centers = [];
-        let lensX = 0;
-        let minX = 0;
-        let maxX = 0;
         let stableNavLensWidth = 0;
 
         function layout() {
@@ -1339,12 +1238,9 @@ document.addEventListener("DOMContentLoaded", () => {
             lens.style.height = h + 'px';
             lens.style.top = (r.top - rectTrack.top) + 'px';
 
-            lensX = c.x - (finalLensW / 2) + bias;
+            const lensX = c.x - (finalLensW / 2) + bias;
             lens.style.transform = 'translateX(' + roundPx(lensX) + 'px)';
             lens.style.opacity = '1';
-
-            minX = centers[0].x - (finalLensW / 2) + bias;
-            maxX = centers[centers.length - 1].x - (finalLensW / 2) + bias;
         }
 
         layout();
@@ -1356,109 +1252,17 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         } catch (e) {}
         window.addEventListener('resize', layout);
-
-        let dragging = false;
-        let targetX = 0;
-        let rafId = null;
-        function getClientX(e) {
-            if (e.touches && e.touches.length) return e.touches[0].clientX;
-            if (e.changedTouches && e.changedTouches.length) return e.changedTouches[0].clientX;
-            return e.clientX;
-        }
-        function step() {
-            let lensWidth = parseFloat(lens.style.width);
-            if (Number.isNaN(lensWidth)) lensWidth = centers[0].w;
-            const half = lensWidth / 2;
-            const clamped = clampNumber(targetX - half, minX, maxX);
-            lensX += (clamped - lensX) * 0.18;
-            lens.style.transform = 'translateX(' + roundPx(lensX) + 'px)';
-            if (dragging) rafId = requestAnimationFrame(step);
-        }
-        function onMove(e) {
-            if (!dragging) return;
-            const rect = track.getBoundingClientRect();
-            targetX = getClientX(e) - rect.left;
-        }
-        function onUp() {
-            if (!dragging) return;
-            dragging = false;
-            document.removeEventListener('mousemove', onMove);
-            document.removeEventListener('mouseup', onUp);
-            document.removeEventListener('touchmove', onMove);
-            document.removeEventListener('touchend', onUp);
-            document.removeEventListener('touchcancel', onUp);
-            if (rafId) cancelAnimationFrame(rafId);
-
-            let lensWidth = parseFloat(lens.style.width);
-            if (Number.isNaN(lensWidth)) lensWidth = centers[0].w;
-            const mid = lensX + (lensWidth / 2);
-            let nearest = 0;
-            let best = Infinity;
-            centers.forEach((c, i) => {
-                const d = absNumber(mid - c.x);
-                if (d < best) { best = d; nearest = i; }
-            });
-            const c = centers[nearest];
-            lens.style.transition = 'transform 280ms cubic-bezier(0.18,0.8,0,1)';
-            let h = centers[nearest].h;
-            if (typeof h !== 'number') h = parseFloat(lens.style.height);
-            if (Number.isNaN(h)) h = centers[0].h;
-            if (typeof h !== 'number') h = 32;
-            const lensW = min2(centers[nearest].w, roundPx(h * 1.3));
-            lens.style.width = lensW + 'px';
-            lens.style.height = h + 'px';
-            lensX = c.x - (lensW / 2) + bias;
-            lens.style.transform = 'translateX(' + roundPx(lensX) + 'px)';
-
-            links.forEach(b => b.classList.remove('active'));
-            const b = links[nearest];
-            b.classList.add('active');
-            if (b && b.getAttribute) {
-                const href = b.getAttribute('href');
-                if (href && href !== '#') {
-                    window.location.href = href;
-                }
-            }
-            setTimeout(() => { lens.style.transition = 'transform 0ms'; }, 300);
-        }
-
-        track.addEventListener('mousedown', (e) => {
-            const rect = track.getBoundingClientRect();
-            dragging = true;
-            lens.style.transition = 'transform 0ms';
-            targetX = getClientX(e) - rect.left;
-            if (rafId) cancelAnimationFrame(rafId);
-            rafId = requestAnimationFrame(step);
-            document.addEventListener('mousemove', onMove);
-            document.addEventListener('mouseup', onUp);
-        });
-        track.addEventListener('touchstart', (e) => {
-            const rect = track.getBoundingClientRect();
-            dragging = true;
-            lens.style.transition = 'transform 0ms';
-            targetX = getClientX(e) - rect.left;
-            if (rafId) cancelAnimationFrame(rafId);
-            rafId = requestAnimationFrame(step);
-            document.addEventListener('touchmove', onMove, { passive: true });
-            document.addEventListener('touchend', onUp);
-            document.addEventListener('touchcancel', onUp);
-        }, { passive: true });
-
         window.addEventListener('load', layout);
     }
     initNavSelector();
 
     // Ensure settings-fab always has top z-index and global delegated click handling
-    // FIX: Using delegation on document.body as requested
     document.body.addEventListener('click', function(e) {
         const fab = e.target.closest && e.target.closest('#settings-fab, .settings-fab');
         if (fab) {
             e.preventDefault();
             e.stopPropagation();
-
-            // Force Z-Index check
             fab.style.setProperty('z-index', '2147483647', 'important');
-
             if (typeof toggleSettings === 'function') {
                 toggleSettings();
             }
