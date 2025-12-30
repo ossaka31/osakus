@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Osaka - Valorant Stats</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+  /* --- 1. GENEL AYARLAR --- */
+  :root {
+    --gear-color: #b8b8b8;
+    --text-color: var(--gear-color);
+    --accent: #ffae00;
+  }
+  body.theme-light { background-color: #e9ecef; color: #121212; --text-color: var(--gear-color); --gear-color: #6c6f73; }
+  body.theme-dark { background-color: #1c1c1c; }
+  body.theme-amoled { background-color: #000000; }
+  body.theme-light::before {
+    background:
+      linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(0,0,0,0.03) 1px, transparent 1px);
+    opacity: 0.12;
+  }
+  body.theme-amoled::before { opacity: 0.18; }
+  body.theme-light .liquid-glass {
+    background: rgba(255,255,255,0.25);
+    border: 1px solid rgba(0,0,0,0.10);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.45);
+  }
+  body.theme-light .glass-text { color: var(--gear-color); text-shadow: none; font-weight: 600; }
+  body.theme-light .stat-card-modern { background: rgba(255,255,255,0.68); border: 1px solid rgba(0,0,0,0.10); color: var(--gear-color); text-shadow: none; }
+  body.theme-light .nav-links li a { color: var(--gear-color); text-shadow: none; font-weight: 600; }
+  body.theme-light .navbar-brand { color: var(--gear-color); }
+  body.theme-light .search-box input { background: rgba(255,255,255,0.58); border: 1px solid rgba(0,0,0,0.16); color: var(--gear-color); backdrop-filter: blur(5px); }
+  body.theme-light .lang-track {
+    background: linear-gradient(120deg, #f1f1f1, #eaeaea);
+    border: 1px solid rgba(0,0,0,0.08);
+  }
+  body.theme-light .lang-track button {
+    color: var(--gear-color);
+  }
+  body.theme-light .lang-track button.active, body.theme-light .lang-track button:hover {
+    color: var(--accent);
+  }
+  body.theme-light .lang-lens {
+    background: rgba(255,255,255,0.58);
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.14), 0 8px 16px rgba(0,0,0,0.10);
+  }
+  body.theme-light .stat-value { color: var(--gear-color); text-shadow: none; }
+  body.theme-light #osaka-toast {
+    background: rgba(255,255,255,0.85);
+    border: 1px solid rgba(0,0,0,0.08);
+    color: #1d1d1f;
+    box-shadow: 0 12px 24px rgba(0,0,0,0.12);
+  }
+  body.theme-light .settings-panel { background: rgba(255,255,255,0.85); border: 1px solid rgba(0,0,0,0.08); }
+  body.theme-light .liquid-glass.navbar-size {
+    background: linear-gradient(120deg, #f1f1f1, #eaeaea);
+    border: 1px solid rgba(0,0,0,0.08);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.45);
+  }
+  body.theme-light .toggle-btn, body.theme-light .theme-btn {
+    background: rgba(255,255,255,0.75);
+    color: var(--gear-color);
+    border: 1px solid rgba(0,0,0,0.08);
+  }
+  body.theme-light .settings-row .label { color: var(--gear-color); }
+  body.theme-light .theme-btn.active { outline-color: rgba(0,0,0,0.18); color: var(--accent); }
+  body.theme-amoled .liquid-glass {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.12);
+    box-shadow: 0 18px 40px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.06);
+  }
+  body.theme-amoled { --gear-color: #b8b8b8; }
+  body.theme-amoled .glass-text { color: var(--gear-color); text-shadow: none; }
+  body.theme-amoled .stat-card-modern {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #f2f2f2;
+    text-shadow: none;
+    box-shadow: 0 18px 40px rgba(0,0,0,0.55);
+  }
+  body.theme-amoled .navbar-brand { color: var(--gear-color); }
+  body.theme-amoled .nav-links li a { color: var(--gear-color); text-shadow: none; }
+  body.theme-amoled .search-box input { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: var(--gear-color); }
+  body.theme-amoled .lang-track {
+    background: linear-gradient(120deg, #0a0a0a, #121212);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  body.theme-amoled .lang-lens {
+    background: rgba(255,255,255,0.03);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.28), 0 10px 20px rgba(0,0,0,0.4);
+  }
+  body.theme-amoled #osaka-toast {
+    background: rgba(0,0,0,0.75);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #f2f2f2;
+    box-shadow: 0 18px 40px rgba(0,0,0,0.55);
+  }
+  body.theme-amoled .settings-panel { background: rgba(0,0,0,0.75); border: 1px solid rgba(255,255,255,0.12); }
+  body.theme-amoled .toggle-btn, body.theme-amoled .theme-btn {
+    background: rgba(255,255,255,0.06);
+    color: #f2f2f2;
+    border: 1px solid rgba(255,255,255,0.12);
+  }
+  body.theme-amoled .theme-btn.active { outline-color: rgba(255,255,255,0.28); color: var(--accent); }
+
+  html, body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      letter-spacing: -0.011em;
+      color: var(--text-color);
+      background-color: #1c1c1c; 
+      overflow-x: hidden;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overscroll-behavior-y: none;
+      overscroll-behavior: none;
+  }
+  body, .glass-text, .navbar-brand, .nav-links li a, .settings-panel, .toggle-btn, .theme-btn, footer, #osaka-toast, .liquid-glass, .lang-track, .search-box input {
+    transition: background-color 220ms ease-out, color 220ms ease-out, border-color 220ms ease-out, box-shadow 220ms ease-out, text-shadow 220ms ease-out;
+  }
+  .mobile-bottom-bar { display: none; }
+  .mobile-bottom-bar span { display: none !important; }
+  .stat-unavailable { width: 100%; text-align: center; color: #aaa; padding: 16px 12px; }
+  #bottom-actions { position: fixed; bottom: 16px; left: 16px; z-index: 2000; padding: 8px 12px; border-radius: 14px; }
+  #bottom-actions:not([hidden]) { display: grid; grid-auto-flow: column; align-items: center; gap: 10px; }
+  #bottom-actions a, #bottom-actions button { display: grid; place-items: center; width: 36px; height: 36px; color: var(--gear-color); text-decoration: none; background: none; border: none; font-size: 0.9rem; }
+  #bottom-actions .icon { font-size: 18px; }
+  @media (hover: hover) and (pointer: fine) { #bottom-actions { display: none !important; } }
+  body { overflow-y: auto; position: relative; z-index: 0; }
+
+  /* ARKA PLAN */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(255,255,255,0.08) 1px, transparent 1px);
+    background-size: 90px 90px;
+    opacity: 0.5;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* NAV LENS SYSTEM */
+  .nav-track {
+    position: relative;
+    display: inline-flex;
+    gap: 0;
+    padding: 5px;
+    border-radius: 999px;
+    background: rgba(0,0,0,0.25);
+    border: 1px solid rgba(255,255,255,0.08);
+    flex-grow: 1;
+    justify-content: center;
+  }
+  .nav-track a {
+    position: relative;
+    z-index: 2;
+    display: block;
+    padding: 8px 20px;
+    color: var(--gear-color);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: color 0.3s;
+    border-radius: 999px;
+  }
+  .nav-track a:hover { color: #fff; }
+  .nav-track a.active { color: var(--accent); }
+  .nav-lens {
+    position: absolute;
+    top: 5px;
+    left: 0;
+    height: calc(100% - 10px);
+    width: 0;
+    background: rgba(255,255,255,0.1);
+    border-radius: 999px;
+    pointer-events: auto;
+    z-index: 3;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    opacity: 0;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1), 0 4px 12px rgba(0,0,0,0.1);
+    cursor: grab;
+  }
+  .nav-lens:active { cursor: grabbing; }
+
+  /* --- 2. LIQUID GLASS YAPISI --- */
+  .liquid-glass {
+    position: relative;
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.012);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 16px 40px rgba(0,0,0,0.35), inset 0 1px 1px rgba(255,255,255,0.25);
+    transition: transform 0.2s cubic-bezier(0.2, 0.9, 0.2, 1);
+    backdrop-filter: url(#liquid-glass-core);
+    -webkit-backdrop-filter: url(#liquid-glass-core);
+    z-index: 1;
+  }
+  .liquid-glass::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    filter: url(#liquid-glass-core);
+    -webkit-filter: url(#liquid-glass-core);
+    pointer-events: none;
+  }
+  @supports (backdrop-filter: blur(0)) {
+    .liquid-glass::after { display: none; }
+  }
+  .liquid-glass:active {
+    transform: scale(1.02);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+  }
+
+  .glass-text {
+    position: relative;
+    color: var(--gear-color);
+    font-size: 24px;
+    font-weight: 400;
+    text-shadow: 0px 2px 8px rgba(0, 0, 0, 0.7);
+    font-family: 'Inter', sans-serif;
+    z-index: 2;
+    text-align: center;
+    width: 100%;
+  }
+
+  /* --- 3. NAVBAR (FIXED & PINNED) --- */
+  .navbar-size {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 80px;
+    z-index: 1000;
+    box-sizing: border-box;
+    border-radius: 0 0 24px 24px;
+    transform: none;
+    max-width: none;
+  }
+
+  .liquid-glass.navbar-size::before,
+  .liquid-glass.navbar-size::after {
+      border-radius: 0 0 24px 24px;
+  }
+
+  .navbar-content {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+      padding: 0 30px;
+      height: 100%;
+      font-family: "Inter", sans-serif;
+  }
+  .navbar-brand {
+      font-weight: 800;
+      letter-spacing: 1.2px;
+      font-size: 1.25rem;
+      color: var(--gear-color);
+      display: inline-block;
+      min-width: 160px;
+      flex-shrink: 0;
+  }
+
+  .search-box input {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 12px;
+    padding: 8px 15px;
+    color: var(--gear-color);
+    outline: none;
+    width: 200px;
+    backdrop-filter: blur(5px);
+  }
+
+  /* --- 4. MAIN CONTAINER --- */
+  main {
+      padding-top: 120px;
+      width: 90%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding-bottom: 100px;
+      flex-grow: 1;
+  }
+
+  /* --- 5. PROFILE HEADER --- */
+  #profile-section {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      margin-bottom: 40px;
+      animation: fadeIn 0.8s ease-out forwards;
+  }
+
+  .profile-card {
+      width: 100%;
+      max-width: 600px;
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+  }
+
+  /* --- 6. DASHBOARD GRID (Dynamic) --- */
+  #dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 25px;
+    width: 100%;
+    animation: fadeIn 1s ease-out forwards;
+    grid-auto-rows: min-content;
+    grid-auto-flow: dense;
+  }
+
+  /* Modern Stat Card Style */
+  .stat-card-modern {
+      background: rgba(255, 255, 255, 0.012);
+      border-radius: 16px;
+      padding: 16px;
+      box-sizing: border-box;
+      border: 0.5px solid rgba(255, 255, 255, 0.12);
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: flex-start;
+      text-align: left;
+      min-height: 140px;
+      height: auto;
+      overflow: hidden;
+      position: relative;
+      z-index: 1;
+  }
+
+  .stat-card-modern:hover {
+      transform: none;
+      background: rgba(255, 255, 255, 0.012);
+      box-shadow: none;
+      border-color: rgba(255, 255, 255, 0.12);
+      filter: none;
+      -webkit-filter: none;
+  }
+  .stat-note {
+      margin-top: 8px;
+      font-size: 0.75rem;
+      color: #bbb;
+      opacity: 0.9;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+  }
+
+  .stat-header {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+  }
+
+  .stat-icon {
+      font-size: 1.3rem;
+  }
+
+  .stat-name {
+      font-size: 0.8rem;
+      color: #aaa;
+      letter-spacing: 0;
+      text-transform: uppercase;
+      font-weight: 700;
+      white-space: normal;
+      word-break: break-word;
+  }
+  .stat-info {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      margin-left: 6px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.12);
+      color: #fff;
+      font-size: 0.7rem;
+      cursor: help;
+  }
+
+  .stat-value-container {
+      width: 100%;
+  }
+
+  .stat-value {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: var(--gear-color);
+      text-shadow: 0 0 15px rgba(255,255,255,0.2);
+      display: -webkit-box;
+      -webkit-line-clamp: 1;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+  }
+
+  /* --- 6. TOAST NOTIFICATION --- */
+  #osaka-toast {
+    visibility: hidden;
+    width: 320px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+    text-align: left;
+    border-radius: 16px;
+    padding: 16px;
+    position: fixed;
+    z-index: 9999;
+    right: 20px;
+    top: 120px;
+    transform: translateX(30px);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+    opacity: 0;
+    transition: opacity 0.25s, transform 0.25s;
+    backdrop-filter: blur(10px);
+  }
+  #osaka-toast .toast-header, #osaka-toast #toast-message { color: var(--gear-color); }
+
+  .gpu-toggle {
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+    border: 0;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  body.gpu-on .liquid-glass { will-change: transform, filter; transform: translateZ(0); backface-visibility: hidden; }
+  
+  .settings-fab {
+    position: fixed;
+    bottom: 20px;
+    left: 18px;
+    width: 44px;
+    height: 44px;
+    border-radius: 999px;
+    display: grid;
+    place-items: center;
+    z-index: 1050;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.18);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15), inset 0 1px 1px rgba(255,255,255,0.25);
+    color: var(--gear-color);
+    cursor: pointer;
+  }
+  .settings-fab i { font-size: 22px; line-height: 1; }
+  body.theme-amoled { --gear-color: #b8b8b8; }
+  body.theme-light { --gear-color: #6c6f73; }
+  
+  .settings-panel {
+    position: fixed;
+    left: 18px;
+    bottom: 74px;
+    width: min(440px, 92vw);
+    border-radius: 16px;
+    z-index: 1051;
+    padding: 14px 16px;
+    box-sizing: border-box;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(10px) scale(0.995);
+    transition: opacity 260ms ease, transform 260ms cubic-bezier(0.2,0.9,0.2,1), visibility 0ms linear 260ms;
+  }
+  .settings-panel.open {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0) scale(1);
+    transition-delay: 0ms;
+  }
+  
+  .settings-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .settings-row .label {
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+    word-break: normal;
+    line-height: 1.3;
+    letter-spacing: 0;
+    flex: 0 0 auto;
+  }
+  .toggle-btn {
+    background: rgba(255,255,255,0.08);
+    border: 0;
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .theme-segment {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    width: 100%;
+  }
+  .theme-btn {
+    background: rgba(255,255,255,0.08);
+    border: 0;
+    color: #fff;
+    padding: 6px 8px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .theme-btn.active { outline: 1px solid rgba(255,255,255,0.28); color: var(--accent); }
+
+  #osaka-toast.show {
+    visibility: visible;
+    opacity: 1;
+    transform: translateX(0);
+  }
+  
+  .toast-header {
+      color: var(--accent);
+      font-weight: bold;
+      font-size: 0.9rem;
+      display: block;
+      margin-bottom: 5px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+  }
+
+  .welcome-card {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      margin: 20px 0 30px 0;
+  }
+  .welcome-inner {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 900px;
+      padding: 30px;
+      border: 1px solid rgba(255,174,0,0.35);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.012);
+  }
+  .welcome-title {
+      color: var(--accent);
+      font-size: 1.4rem;
+      font-weight: 800;
+      margin-bottom: 8px;
+      letter-spacing: 0.5px;
+  }
+  .welcome-desc {
+      color: var(--gear-color);
+      font-size: 1rem;
+      line-height: 1.6;
+  }
+
+  .lang-selector {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 2000;
+  }
+  .lang-track {
+      position: relative;
+      display: inline-flex;
+      gap: 10px;
+      padding: 6px;
+      border-radius: 999px;
+      background: linear-gradient(120deg, #111, #1a1a1a);
+      border: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+  }
+  body.theme-light .lang-track {
+      background: linear-gradient(120deg, #f1f1f1, #eaeaea);
+      border: 1px solid rgba(0,0,0,0.08);
+  }
+  body.theme-amoled .lang-track {
+      background: linear-gradient(120deg, #0a0a0a, #121212);
+      border: 1px solid rgba(255,255,255,0.08);
+  }
+  .lang-track button {
+      position: relative;
+      z-index: 1;
+      background: none;
+      border: none;
+      color: var(--gear-color);
+      font-weight: 700;
+      cursor: pointer;
+      transition: color 0.2s;
+      font-size: 0.9rem;
+      padding: 8px 14px;
+      border-radius: 999px;
+      will-change: color;
+  }
+  .lang-track button.active, .lang-track button:hover {
+      color: var(--accent);
+  }
+  .lang-lens {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      height: 32px;
+      width: 60px;
+      border-radius: 999px;
+      pointer-events: none;
+      background: rgba(255,255,255,0.01);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.35), 0 8px 20px rgba(0,0,0,0.3);
+      will-change: transform, width;
+      contain: paint;
+      transition: transform 0ms, width 120ms cubic-bezier(0.2, 0.9, 0.2, 1);
+  }
+  .lang-lens::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    filter: url(#liquid-glass-core);
+    -webkit-filter: url(#liquid-glass-core);
+  }
+  .lang-lens::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    pointer-events: none;
+    background:
+      radial-gradient(120% 100% at 50% 50%,
+        rgba(255,255,255,0.20) 6%,
+        rgba(255,255,255,0.12) 20%,
+        rgba(255,255,255,0.06) 38%,
+        rgba(255,255,255,0.00) 62%),
+      linear-gradient(to top, rgba(255,255,255,0.10), rgba(255,255,255,0.02)),
+      linear-gradient(to bottom, rgba(255,255,255,0.10), rgba(255,255,255,0.02));
+    opacity: calc(0.16 + (clamp(0, var(--lx, 0), 1) * 0.08));
+    mix-blend-mode: screen;
+  }
+
+  footer {
+      text-align: center;
+      padding: 40px;
+      color: var(--gear-color);
+      font-size: 0.9rem;
+      margin-top: auto;
+  }
+
+  @supports not (filter: url("#liquid-glass-filter")) {
+    .liquid-glass::after { backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); }
+  }
+
+  /* --- Media Queries --- */
+  @media (max-width: 768px) {
+    .navbar-size { height: auto; }
+    .navbar-content { padding: 12px 18px; gap: 10px; }
+    .nav-track { display: flex; width: 100%; justify-content: center; gap: 18px; }
+    .nav-track a { font-size: 1rem; padding: 12px 18px; }
+    .search-box { width: 100%; }
+    .search-box input { width: 100%; }
+    #dashboard-grid { display: grid; grid-template-columns: 1fr; }
+    
+    #settings-fab { display: grid; }
+    .lang-selector { bottom: 98px; }
+    main { padding-bottom: 160px; }
+
+    /* Mobile performance tweaks */
+    .liquid-glass::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; filter: none !important; }
+    .liquid-glass { box-shadow: none !important; }
+    .lang-track button { padding: 12px 16px; }
+    .nav-lens { transition-duration: 200ms !important; }
+  }
+
+  @media screen and (max-aspect-ratio: 9/16) {
+    .navbar-content { gap: 8px; padding: 10px 16px; }
+    .nav-track { width: 100%; justify-content: center; gap: 5px; }
+    .nav-track a { font-size: clamp(11px, 3.8vw, 13px); padding: 6px 12px; }
+    main { padding-top: 100px; width: 92%; }
+    .stat-card-modern { min-height: 120px; padding: 14px; }
+    .stat-value { font-size: 1.3rem; }
+    .stat-name { font-size: 0.75rem; }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+</style>
+</head>
+<body>
+
+<script>
+  (function() {
+    var lang = localStorage.getItem("osaka_lang");
+    if (!lang) lang = "tr";
+    window.__osaka_preferred_lang = lang;
+    document.documentElement.setAttribute("lang", lang);
+  })();
+</script>
+
+<div class="lang-selector">
+  <div class="lang-track">
+    <div class="lang-lens"></div>
+    <button data-lang="tr">TR</button>
+    <button data-lang="en">EN</button>
+    <button data-lang="ru">RU</button>
+  </div>
+</div>
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <defs>
+    <filter id="liquid-glass-filter" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="smooth_map"/>
+      <feColorMatrix in="smooth_map" type="saturate" values="3.0" result="vibrant_map"/>
+      <feComponentTransfer in="vibrant_map" result="bright_map">
+        <feFuncR type="linear" slope="1.5" intercept="-0.1"/>
+        <feFuncG type="linear" slope="1.5" intercept="-0.1"/>
+        <feFuncB type="linear" slope="1.5" intercept="-0.1"/>
+      </feComponentTransfer>
+      <feDisplacementMap in="SourceGraphic" in2="bright_map" scale="22" xChannelSelector="R" yChannelSelector="G" result="refracted"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="spec_map"/>
+      <feSpecularLighting in="spec_map" surfaceScale="10" specularConstant="1.3" specularExponent="60" lightingColor="#ffffff" result="crystal_shine">
+        <fePointLight x="-100" y="-300" z="400"/>
+      </feSpecularLighting>
+      <feComposite in="crystal_shine" in2="SourceGraphic" operator="in" result="shine_masked"/>
+      <feMerge>
+        <feMergeNode in="refracted"/>
+        <feMergeNode in="shine_masked"/>
+      </feMerge>
+    </filter>
+    <filter id="liquid-glass-core" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
+      <feImage id="lg-map" x="0" y="0" width="256" height="256" preserveAspectRatio="none" result="map" xlink:href="./assets/glass-displacement.png"/>
+      <feDisplacementMap in="SourceGraphic" in2="map" scale="12" xChannelSelector="R" yChannelSelector="G" result="refract"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="spec_src"/>
+      <feSpecularLighting in="spec_src" surfaceScale="9" specularConstant="1.05" specularExponent="62" lightingColor="#ffffff" result="spec">
+        <fePointLight x="-160" y="-320" z="420"/>
+      </feSpecularLighting>
+      <feComposite in="spec" in2="SourceAlpha" operator="in" result="spec_masked"/>
+      <feMerge>
+        <feMergeNode in="refract"/>
+        <feMergeNode in="spec_masked"/>
+      </feMerge>
+    </filter>
+  </defs>
+</svg>
+
+<nav class="liquid-glass navbar-size">
+    <div class="glass-text navbar-content">
+        <div class="navbar-brand">OSAKA</div>
+        <div class="nav-track">
+            <div class="nav-lens"></div>
+            <a id="nav-home" href="index.html">Ana Sayfa</a>
+            <a id="nav-valorant" href="valorant.html" class="active">Valorant</a>
+            <a id="nav-truckersmp" href="truckersmp.html">TruckersMP</a>
+            <a id="nav-download" href="download.html">Download</a>
+        </div>
+        <div class="search-box liquid-glass">
+            <input type="text" placeholder="Profil Linki veya ID...">
+        </div>
+    </div>
+</nav>
+
+<button id="settings-fab" class="settings-fab liquid-glass" aria-label="Ayarlar"><i class="fa fa-gear"></i></button>
+
+<div id="osaka-toast">
+    <span class="toast-header">Grand Osaka'dan Mesaj Var:</span>
+    <span id="toast-message">İşlem Tamamlandı.</span>
+</div>
+
+<main>
+    <!-- Welcome Card -->
+    <div id="welcome-card" class="welcome-card">
+        <div class="welcome-inner liquid-glass">
+            <div class="glass-text">
+                <div id="welcome-title" class="welcome-title">Valorant Ajanı, Hoş Geldin</div>
+                <div id="welcome-desc" class="welcome-desc">
+                  Riot ID'nizi (Örn: <b>Nismo#EUW</b>) yukarıdaki arama kutusuna yazarak istatistiklerinizi görüntüleyebilirsiniz.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Section -->
+    <div id="profile-section" style="display:none;">
+        <div class="liquid-glass profile-card">
+            <div class="glass-text">
+                <i id="profile-icon" class="fas fa-user-ninja" style="font-size: 3rem; margin-bottom: 15px;"></i>
+                <h3 id="profile-name" style="margin: 0;">Kullanıcı</h3>
+                <p id="profile-tag" style="margin:5px 0 0 0; font-size:1rem; opacity:0.8; color: #aaa;">#TAG</p>
+                
+                <div style="margin-top: 15px; display: flex; gap: 10px;">
+                    <button id="share-btn" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 8px 12px; border-radius: 8px; cursor: pointer;">
+                        <i class="fas fa-link"></i> Linki Kopyala
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard Grid -->
+    <div id="dashboard-grid"></div>
+
+</main>
+
+<footer id="main-footer">
+    Grand OSAKA tarafından hazırlanmıştır.
+</footer>
+
+<script src="./translations.js"></script>
+<!-- valorant.js not present in workspace; removed to avoid console 404 -->
+<script src="./script.js"></script>
+
+
+</body>
+</html>
