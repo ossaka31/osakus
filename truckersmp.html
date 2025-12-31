@@ -220,10 +220,11 @@
       border-radius: 0 0 24px 24px;
   }
 
+  /* NAVBAR STANDARDIZATION & FIXES */
   .navbar-content {
       width: 100%;
-      /* REQ 1: Drastic Widening */
-      max-width: 1600px;
+      /* REQ 1: Drastic Widening / Standardization to 1200px */
+      max-width: 1200px !important;
       margin: 0 auto;
       display: flex;
       justify-content: space-between;
@@ -246,9 +247,10 @@
 
   /* NAV LENS SYSTEM (Standardized) */
   .nav-track {
-    position: absolute; /* Requirement: Absolute Centering */
-    left: 50%;
-    transform: translateX(-50%);
+    position: absolute !important; /* Req 1: Absolute Centering */
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    margin: 0 !important;
     display: inline-flex;
     gap: 0;
     /* REQ 1: Padding & Min-Width */
@@ -463,9 +465,9 @@
   }
   body.gpu-on .liquid-glass { will-change: transform, filter; transform: translateZ(0); backface-visibility: hidden; }
   
-  /* --- SETTINGS FAB --- */
-  .settings-fab {
-    position: fixed;
+  /* --- SETTINGS FAB FIXES --- */
+  #settings-fab, .settings-fab {
+    position: fixed !important;
     bottom: 20px;
     left: 18px;
     width: 44px;
@@ -480,7 +482,8 @@
     box-shadow: 0 4px 12px rgba(0,0,0,0.15), inset 0 1px 1px rgba(255,255,255,0.25);
     color: var(--gear-color);
     cursor: pointer;
-    pointer-events: auto;
+    /* Requirement: Pointer Events */
+    pointer-events: auto !important;
   }
   .settings-fab i { font-size: 22px; line-height: 1; }
   body.theme-amoled { --gear-color: #b8b8b8; }
@@ -638,14 +641,14 @@
       cursor: pointer;
       transition: color 0.2s;
       font-size: 0.9rem;
-      padding: 8px 16px; /* Requirement: Adjusted padding */
+      padding: 8px 16px !important;
       border-radius: 999px;
       will-change: color;
   }
   /* Requirement: Active language color */
   .lang-track button.active {
       color: var(--accent) !important;
-      text-shadow: 0 0 10px rgba(255, 174, 0, 0.4);
+      text-shadow: 0 0 10px rgba(255, 174, 0, 0.4) !important;
   }
   .lang-track button:hover {
       color: var(--accent);
@@ -707,9 +710,9 @@
     .navbar-size { height: auto; }
     .navbar-content { padding: 12px 18px; gap: 10px; }
     .nav-track {
-        position: relative;
-        left: auto;
-        transform: none;
+        position: relative !important;
+        left: auto !important;
+        transform: none !important;
         display: flex;
         width: 100%;
         justify-content: center;
