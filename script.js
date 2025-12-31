@@ -216,35 +216,19 @@ function analyzePerformance(stats, profile) {
 }
 
 function updateActiveLangButton(lang) {
+    // This is handled by the initLangSelector logic now
+    // We just ensure the DOM class is correct here
     const container = document.querySelector('.lang-selector');
     const track = container ? container.querySelector('.lang-track') : null;
-    const lens = track ? track.querySelector('.lang-lens') : null;
     const btns = Array.from(track ? track.querySelectorAll('button') : []);
 
-    btns.forEach(btn => btn.classList.remove('active'));
+    btns.forEach(btn => {
+        if (btn.getAttribute('data-lang') === lang) btn.classList.add('active');
+        else btn.classList.remove('active');
+    });
 
-    const activeBtn = track ? track.querySelector(`button[data-lang="${lang}"]`) : null;
-    if (!activeBtn) return;
-    if (!lens) return;
-    if (!track) return;
-
-    activeBtn.classList.add('active');
-
-    const rectTrack = track.getBoundingClientRect();
-    const rectBtn = activeBtn.getBoundingClientRect();
-    const h = rectBtn.height;
-    const lensW = min2(rectBtn.width, roundPx(h * 1.3));
-
-    lens.style.width = lensW + 'px';
-    lens.style.height = h + 'px';
-    lens.style.top = (rectBtn.top - rectTrack.top) + 'px';
-
-    const centerX = (rectBtn.left - rectTrack.left) + rectBtn.width / 2;
-    const bias = -6;
-    const lensX = centerX - (lensW / 2) + bias;
-
-    lens.style.transform = 'translateX(' + roundPx(lensX) + 'px)';
-    lens.classList.add('active');
+    // Trigger layout update if possible
+    window.dispatchEvent(new Event('resize'));
 }
 
 window.downloadPDF = function() {
@@ -1129,7 +1113,11 @@ document.addEventListener("DOMContentLoaded", () => {
         let minX = 0;
         let maxX = 0;
 
+        let fontsLoaded = false;
+
         function layout() {
+            if (!fontsLoaded) return; // Strict Requirement: Do not calc until ready
+
             const rectTrack = track.getBoundingClientRect();
             centers = btns.map(b => {
                 const r = b.getBoundingClientRect();
@@ -1181,13 +1169,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (document.fonts) {
             document.fonts.ready.then(() => {
+                fontsLoaded = true; // Mark as ready
                 layout();
-                setTimeout(layout, 300); // Forced fallback
             });
         } else {
+            // Fallback
             window.addEventListener('load', () => {
+                fontsLoaded = true;
                 layout();
-                setTimeout(layout, 300);
             });
         }
         window.addEventListener('resize', layout);
@@ -1251,26 +1240,23 @@ document.addEventListener("DOMContentLoaded", () => {
             lens.style.opacity = '1';
         }
 
-        layout();
+        //layout(); // Don't call immediately if we want to wait for fonts? User only said this for LangSelector.
+        // But for consistency and to avoid race conditions here too, I'll rely on fonts ready.
 
-        // RACE CONDITION FIX: ResizeObserver + Fonts Ready + Timeout
+        if (document.fonts) {
+            document.fonts.ready.then(() => {
+                layout();
+            });
+        } else {
+             window.addEventListener('load', layout);
+        }
+
         if (window.ResizeObserver) {
             const ro2 = new ResizeObserver(() => layout());
             ro2.observe(track);
         }
 
-        if (document.fonts) {
-            document.fonts.ready.then(() => {
-                layout();
-                setTimeout(layout, 300); // Forced fallback
-            });
-        }
-
         window.addEventListener('resize', layout);
-        window.addEventListener('load', () => {
-            layout();
-            setTimeout(layout, 300);
-        });
     }
     initNavSelector();
 
@@ -1443,12 +1429,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         ba.hidden = window.isSettingsOpen ? false : true;
     }
-    if (settingsFab) {
-        settingsFab.addEventListener('click', (e) => {
-            e.stopPropagation();
-            toggleSettings();
-        });
-    }
+    // Note: Listener removed here as it is handled by the global delegation on document.body
     document.addEventListener('click', (e) => {
         if (!window.isSettingsOpen) return;
         const t = e.target;
