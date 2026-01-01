@@ -8,6 +8,7 @@ let lastFaceit = null;
 let accordionState = { cat_general: false, cat_weapons: false, cat_maps: false };
 let isSearching = false;
 
+// --- Helper Functions ---
 function requireFields(obj, fields) {
     for (const f of fields) {
         const v = obj[f];
@@ -38,7 +39,6 @@ function roundPx(n) {
     return adj | 0;
 }
 
-// --- Helper Functions ---
 function getWeaponName(code) {
     const tr = {
         ak47: "AK-47", m4a1: "M4A1", m4a1_silencer: "M4A1-S", galilar: "Galil AR", famas: "FAMAS",
@@ -216,35 +216,9 @@ function analyzePerformance(stats, profile) {
 }
 
 function updateActiveLangButton(lang) {
-    const container = document.querySelector('.lang-selector');
-    const track = container ? container.querySelector('.lang-track') : null;
-    const lens = track ? track.querySelector('.lang-lens') : null;
-    const btns = Array.from(track ? track.querySelectorAll('button') : []);
-
-    btns.forEach(btn => btn.classList.remove('active'));
-
-    const activeBtn = track ? track.querySelector(`button[data-lang="${lang}"]`) : null;
-    if (!activeBtn) return;
-    if (!lens) return;
-    if (!track) return;
-
-    activeBtn.classList.add('active');
-
-    const rectTrack = track.getBoundingClientRect();
-    const rectBtn = activeBtn.getBoundingClientRect();
-    const h = rectBtn.height;
-    const lensW = min2(rectBtn.width, roundPx(h * 1.3));
-
-    lens.style.width = lensW + 'px';
-    lens.style.height = h + 'px';
-    lens.style.top = (rectBtn.top - rectTrack.top) + 'px';
-
-    const centerX = (rectBtn.left - rectTrack.left) + rectBtn.width / 2;
-    const bias = -6;
-    const lensX = centerX - (lensW / 2) + bias;
-
-    lens.style.transform = 'translateX(' + roundPx(lensX) + 'px)';
-    lens.classList.add('active');
+    // This is handled by initLangSelector's layout logic mostly,
+    // but we can trigger a refresh if needed.
+    // The visual update is now fully handled in initLangSelector to ensure sync with lens.
 }
 
 window.downloadPDF = function() {
@@ -366,8 +340,6 @@ function updateStaticUIText() {
     if (themeDarkBtn) themeDarkBtn.textContent = getTranslation('theme_dark');
     const themeAmoledBtn = document.getElementById('theme-amoled');
     if (themeAmoledBtn) themeAmoledBtn.textContent = getTranslation('theme_amoled');
-
-    updateActiveLangButton(currentLang);
 }
 
 function generateLiquidGlassMap(n = 200) {
@@ -415,6 +387,9 @@ function initLiquidGlass() {
 }
 
 function showNotification(msg, type = "info") {
+  const toast = document.getElementById("osaka-toast");
+  const msgSpan = document.getElementById("toast-message");
+  const headerSpan = document.querySelector(".toast-header");
   if (!toast) return;
   if (!msgSpan) return;
   msgSpan.innerText = msg === null ? "" : (msg === undefined ? "" : msg);
@@ -942,6 +917,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const panel = document.createElement('div');
         panel.id = 'settings-panel';
         panel.className = 'settings-panel liquid-glass';
+        // Settings panel styling is handled in HTML/CSS blocks now to match requirements
         panel.innerHTML = `
           <div class="settings-row">
             <span id="settings-gpu-label" class="label">Donanım Hızlandırma</span>
@@ -1025,7 +1001,13 @@ document.addEventListener("DOMContentLoaded", () => {
         if (window.isSettingsOpen) {
             mountSettingsPanel();
             const panel = document.getElementById('settings-panel');
-            if (panel) panel.classList.add('open');
+            if (panel) {
+                // Ensure it's ready to transition
+                panel.style.visibility = 'visible';
+                requestAnimationFrame(() => {
+                    panel.classList.add('open');
+                });
+            }
         } else {
             const panel = document.getElementById('settings-panel');
             if (panel) panel.classList.remove('open');
@@ -1045,32 +1027,26 @@ document.addEventListener("DOMContentLoaded", () => {
     // Ensure settings panel is closed on initial load
     closeSettings();
 
-    // Attach settings-fab toggles (works across pages)
-    (function bindSettingsFabs() {
-        const nodes = Array.from(document.querySelectorAll('.settings-fab, #settings-fab'));
-        nodes.forEach(fab => {
-            if (!fab) return;
-            if (fab.dataset._settingsBound) return;
-            try { fab.setAttribute('role', 'button'); } catch(e) {}
-            try { fab.setAttribute('aria-pressed', 'false'); } catch(e) {}
-            try { fab.style.cursor = 'pointer'; } catch(e) {}
+    // Event Delegation for Settings FAB - Critical Requirement Fix
+    document.body.addEventListener('click', (e) => {
+        const fab = e.target.closest('#settings-fab');
+        if (fab) {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleSettings();
+            return;
+        }
 
-            const handler = (ev) => {
-                try { ev.stopPropagation(); } catch (err) {}
-                try { fab.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.96)' }, { transform: 'scale(1)' }], { duration: 220, easing: 'cubic-bezier(.2,.9,.2,1)' }); } catch (err) {}
-                toggleSettings();
-            };
-
-            fab.addEventListener('click', handler);
-            fab.addEventListener('keydown', (ev) => {
-                if (ev.key === 'Enter' || ev.key === ' ') {
-                    ev.preventDefault();
-                    handler(ev);
-                }
-            });
-            fab.dataset._settingsBound = '1';
-        });
-    })();
+        // Close when clicking outside
+        if (window.isSettingsOpen) {
+            const panel = document.getElementById('settings-panel');
+            const isInsidePanel = panel && panel.contains(e.target);
+            const isInsideFab = fab; // Already checked, but for logic clarity
+            if (!isInsidePanel && !isInsideFab) {
+                closeSettings();
+            }
+        }
+    });
 
     // Close settings on route/hash/popstate
     window.addEventListener('popstate', closeSettings);
@@ -1112,6 +1088,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (e) {}
     }
     
+    // FIX 3: Language Selector Race Condition & Styling
     function initLangSelector() {
         const selector = document.querySelector('.lang-selector');
         if (!selector) return;
@@ -1141,8 +1118,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (maxW > stableLensWidth) stableLensWidth = maxW;
             } catch (e) {}
 
-            let activeBtn = track.querySelector('button.active');
+            // Determine active language
+            // Note: button data-lang must match currentLang
+            let activeBtn = Array.from(btns).find(b => b.getAttribute('data-lang') === currentLang);
             if (!activeBtn) activeBtn = btns[0];
+
+            // Sync active class
+            btns.forEach(b => b.classList.remove('active'));
+            activeBtn.classList.add('active');
 
             // Highlight logic
             const idx = btns.indexOf(activeBtn);
@@ -1163,47 +1146,49 @@ document.addEventListener("DOMContentLoaded", () => {
             const lensX = c.x - (lensW / 2) + bias;
             lens.style.transform = 'translateX(' + roundPx(lensX) + 'px)';
 
-            minX = centers[0].x - (lensW / 2) + bias;
-            maxX = centers[centers.length - 1].x - (lensW / 2) + bias;
+            if (centers.length > 0) {
+              minX = centers[0].x - (lensW / 2) + bias;
+              maxX = centers[centers.length - 1].x - (lensW / 2) + bias;
 
-            // Parallax effect prop
-            const denom = (maxX - minX);
-            const safeDenom = denom > 1 ? denom : 1;
-            const ratio = (lensX - minX) / safeDenom;
-            lens.style.setProperty('--lx', String(ratio));
+              // Parallax effect prop
+              const denom = (maxX - minX);
+              const safeDenom = denom > 1 ? denom : 1;
+              const ratio = (lensX - minX) / safeDenom;
+              lens.style.setProperty('--lx', String(ratio));
+            }
         }
 
-        // RACE CONDITION FIX: ResizeObserver + Fonts Ready + Timeout
-        if (window.ResizeObserver) {
-            const ro = new ResizeObserver(() => layout());
-            ro.observe(track);
-        }
-
+        // RACE CONDITION FIX: Explicit wait for fonts
         if (document.fonts) {
             document.fonts.ready.then(() => {
                 layout();
-                setTimeout(layout, 300); // Forced fallback
+                // Double ensure layout happens after repaint
+                requestAnimationFrame(layout);
             });
         } else {
-            window.addEventListener('load', () => {
-                layout();
-                setTimeout(layout, 300);
-            });
+            // Fallback for older browsers
+            window.addEventListener('load', layout);
+            setTimeout(layout, 500);
+        }
+
+        // Also observe resizing
+        if (window.ResizeObserver) {
+            const ro = new ResizeObserver(() => layout());
+            ro.observe(track);
         }
         window.addEventListener('resize', layout);
 
         btns.forEach((btn, i) => {
             btn.addEventListener('click', () => {
-                btns.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-
-                // Immediately calculate new position for smooth slide
-                layout();
-
                 const lang = btn.getAttribute('data-lang');
                 if (lang) changeLanguage(lang);
+                // Layout will be called by changeLanguage updating active state
+                setTimeout(layout, 0);
             });
         });
+
+        // Initial call
+        layout();
     }
     initLangSelector();
 
@@ -1220,6 +1205,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         function layout() {
             const rectTrack = track.getBoundingClientRect();
+            // Since .nav-track is absolutely positioned, getBoundingClientRect accounts for that.
+
             centers = links.map(a => {
                 const r = a.getBoundingClientRect();
                 return { x: r.left - rectTrack.left + r.width / 2, w: r.width, h: r.height, left: r.left - rectTrack.left };
@@ -1229,11 +1216,23 @@ document.addEventListener("DOMContentLoaded", () => {
                 const maxW = widths.length ? widths.reduce((a,b)=> Math.max(a,b), 0) : 0;
                 if (maxW > stableNavLensWidth) stableNavLensWidth = maxW;
             } catch (e) {}
+
+            // Find active link
+            // For simple active state based on class or URL
             let active = track.querySelector('a.active');
+            // If no active class, try matching href
+            if (!active) {
+                const currentPath = window.location.pathname.split('/').pop() || 'index.html';
+                active = links.find(l => l.getAttribute('href') === currentPath);
+            }
             if (!active) active = links[0];
+
             links.forEach(l => l.classList.remove('active'));
             active.classList.add('active');
+
             const idx = links.indexOf(active);
+            if (idx === -1) return;
+
             const c = centers[idx];
             const r = active.getBoundingClientRect();
             const h = r.height;
@@ -1251,49 +1250,33 @@ document.addEventListener("DOMContentLoaded", () => {
             lens.style.opacity = '1';
         }
 
-        layout();
+        if (document.fonts) {
+            document.fonts.ready.then(() => {
+                layout();
+                requestAnimationFrame(layout);
+            });
+        } else {
+             window.addEventListener('load', layout);
+        }
 
-        // RACE CONDITION FIX: ResizeObserver + Fonts Ready + Timeout
         if (window.ResizeObserver) {
             const ro2 = new ResizeObserver(() => layout());
             ro2.observe(track);
         }
-
-        if (document.fonts) {
-            document.fonts.ready.then(() => {
-                layout();
-                setTimeout(layout, 300); // Forced fallback
-            });
-        }
-
         window.addEventListener('resize', layout);
-        window.addEventListener('load', () => {
-            layout();
-            setTimeout(layout, 300);
-        });
+
+        // Initial
+        layout();
     }
     initNavSelector();
-
-    // Ensure settings-fab always has top z-index and global delegated click handling
-    document.body.addEventListener('click', function(e) {
-        const fab = e.target.closest && e.target.closest('#settings-fab, .settings-fab');
-        if (fab) {
-            e.preventDefault();
-            e.stopPropagation();
-            fab.style.setProperty('z-index', '2147483647', 'important');
-            if (typeof toggleSettings === 'function') {
-                toggleSettings();
-            }
-            return;
-        }
-    }, true);
 
     window.changeLanguage = function(lang) {
         try { closeSettings(); } catch (e) {}
         currentLang = lang;
         localStorage.setItem('osaka_lang', lang);
         document.documentElement.setAttribute('lang', lang);
-        updateActiveLangButton(lang);
+        updateActiveLangButton(lang); // Trigger visual update
+        initLangSelector(); // Re-calculate lens
         updateStaticUIText();
         const shouldRerender = lastStats !== null ? true : (lastProfile !== null);
         if (shouldRerender) {
@@ -1368,6 +1351,7 @@ document.addEventListener("DOMContentLoaded", () => {
         lastRenderWidth = w;
     });
 
+    // Mobile Bottom Actions and Theme logic
     const settingsFab = document.getElementById('settings-fab');
     let bottomActions = document.getElementById('bottom-actions');
     function isMobileUI() {
@@ -1420,11 +1404,9 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         const baSettings = el.querySelector('#ba-settings');
         if (baSettings) {
-            baSettings.addEventListener('click', () => {
-                try { toggleSettings(); } catch (e) {
-                    if (settingsPanelElement) settingsPanelElement.classList.toggle('open');
-                }
-                syncBottomActions();
+            baSettings.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleSettings();
             });
         }
         return el;
@@ -1437,35 +1419,10 @@ document.addEventListener("DOMContentLoaded", () => {
             ba.hidden = true;
             return;
         }
-        if (!settingsPanelElement) {
-            ba.hidden = true;
-            return;
-        }
         ba.hidden = window.isSettingsOpen ? false : true;
     }
-    if (settingsFab) {
-        settingsFab.addEventListener('click', (e) => {
-            e.stopPropagation();
-            toggleSettings();
-        });
-    }
-    document.addEventListener('click', (e) => {
-        if (!window.isSettingsOpen) return;
-        const t = e.target;
-        let inside = false;
-        if (settingsFab && settingsFab.contains(t)) inside = true;
-        const panel = document.getElementById('settings-panel');
-        if (panel && panel.contains(t)) inside = true;
-        const ba = document.getElementById('bottom-actions');
-        if (!inside && ba && ba.contains(t)) inside = true;
-        if (!inside) {
-            closeSettings();
-        }
-    });
-    syncBottomActions();
-    window.addEventListener('resize', () => {
-        syncBottomActions();
-    });
+
+    // Theme Logic
     function applyTheme(theme) {
         let decided = theme;
         if (theme === 'system') {
