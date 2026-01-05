@@ -1130,6 +1130,7 @@ document.addEventListener("DOMContentLoaded", () => {
         let maxX = 0;
 
         function layout() {
+            if (!track || !lens) return;
             const rectTrack = track.getBoundingClientRect();
             centers = btns.map(b => {
                 const r = b.getBoundingClientRect();
@@ -1173,22 +1174,29 @@ document.addEventListener("DOMContentLoaded", () => {
             lens.style.setProperty('--lx', String(ratio));
         }
 
-        // RACE CONDITION FIX: ResizeObserver + Fonts Ready + Timeout
-        if (window.ResizeObserver) {
-            const ro = new ResizeObserver(() => layout());
-            ro.observe(track);
-        }
+        // RACE CONDITION FIX: Wait for fonts before initial layout
+        const doLayout = () => {
+            if (document.fonts && !document.fonts.ready) return; // Paranoia check
+            layout();
+        };
 
         if (document.fonts) {
             document.fonts.ready.then(() => {
-                layout();
-                setTimeout(layout, 300); // Forced fallback
+                doLayout();
+                // Double check after a short delay to ensure everything settled
+                setTimeout(doLayout, 100);
             });
         } else {
+            // Fallback for older browsers
             window.addEventListener('load', () => {
-                layout();
-                setTimeout(layout, 300);
+                doLayout();
+                setTimeout(doLayout, 100);
             });
+        }
+
+        if (window.ResizeObserver) {
+            const ro = new ResizeObserver(() => layout());
+            ro.observe(track);
         }
         window.addEventListener('resize', layout);
 
@@ -1251,42 +1259,48 @@ document.addEventListener("DOMContentLoaded", () => {
             lens.style.opacity = '1';
         }
 
-        layout();
+        // RACE CONDITION FIX: Wait for fonts here too
+        const doLayout = () => {
+            layout();
+        };
 
-        // RACE CONDITION FIX: ResizeObserver + Fonts Ready + Timeout
+        if (document.fonts) {
+             document.fonts.ready.then(() => {
+                doLayout();
+                setTimeout(doLayout, 100);
+             });
+        } else {
+             window.addEventListener('load', () => {
+                 doLayout();
+                 setTimeout(doLayout, 100);
+             });
+        }
+
         if (window.ResizeObserver) {
             const ro2 = new ResizeObserver(() => layout());
             ro2.observe(track);
         }
 
-        if (document.fonts) {
-            document.fonts.ready.then(() => {
-                layout();
-                setTimeout(layout, 300); // Forced fallback
-            });
-        }
-
         window.addEventListener('resize', layout);
-        window.addEventListener('load', () => {
-            layout();
-            setTimeout(layout, 300);
-        });
     }
     initNavSelector();
 
     // Ensure settings-fab always has top z-index and global delegated click handling
+    // Delegation on document.body for robustness
     document.body.addEventListener('click', function(e) {
-        const fab = e.target.closest && e.target.closest('#settings-fab, .settings-fab');
+        // Find closest parent that is the fab
+        const fab = e.target.closest('#settings-fab, .settings-fab');
         if (fab) {
             e.preventDefault();
             e.stopPropagation();
+            // Force z-index just in case css was overridden
             fab.style.setProperty('z-index', '2147483647', 'important');
             if (typeof toggleSettings === 'function') {
                 toggleSettings();
             }
             return;
         }
-    }, true);
+    }, true); // Use capture phase to ensure we get it first
 
     window.changeLanguage = function(lang) {
         try { closeSettings(); } catch (e) {}
