@@ -8,6 +8,8 @@ let lastFaceit = null;
 let accordionState = { cat_general: false, cat_weapons: false, cat_maps: false };
 let isSearching = false;
 
+// --- Helper Functions ---
+
 function requireFields(obj, fields) {
     for (const f of fields) {
         const v = obj[f];
@@ -38,7 +40,6 @@ function roundPx(n) {
     return adj | 0;
 }
 
-// --- Helper Functions ---
 function getWeaponName(code) {
     const tr = {
         ak47: "AK-47", m4a1: "M4A1", m4a1_silencer: "M4A1-S", galilar: "Galil AR", famas: "FAMAS",
@@ -211,10 +212,6 @@ function formatDistance(cm) {
     return formatNumber(cm);
 }
 
-function analyzePerformance(stats, profile) {
-    return "";
-}
-
 function updateActiveLangButton(lang) {
     const container = document.querySelector('.lang-selector');
     const track = container ? container.querySelector('.lang-track') : null;
@@ -229,22 +226,9 @@ function updateActiveLangButton(lang) {
     if (!track) return;
 
     activeBtn.classList.add('active');
-
-    const rectTrack = track.getBoundingClientRect();
-    const rectBtn = activeBtn.getBoundingClientRect();
-    const h = rectBtn.height;
-    const lensW = min2(rectBtn.width, roundPx(h * 1.3));
-
-    lens.style.width = lensW + 'px';
-    lens.style.height = h + 'px';
-    lens.style.top = (rectBtn.top - rectTrack.top) + 'px';
-
-    const centerX = (rectBtn.left - rectTrack.left) + rectBtn.width / 2;
-    const bias = -6;
-    const lensX = centerX - (lensW / 2) + bias;
-
-    lens.style.transform = 'translateX(' + roundPx(lensX) + 'px)';
-    lens.classList.add('active');
+    // NOTE: Lens update happens in initLangSelector layout() loop or event listener, but calling layout() here would be good if we had access to it.
+    // Since initLangSelector is self-contained, we trigger a window resize to force layout update, or rely on its own internal state updates.
+    window.dispatchEvent(new Event('resize'));
 }
 
 window.downloadPDF = function() {
@@ -310,7 +294,6 @@ function updateStaticUIText() {
     const welcomeTitle = document.getElementById('welcome-title');
     const welcomeDesc = document.getElementById('welcome-desc');
 
-    // Detect which page we're on by checking for page-specific IDs
     const isValorantPage = !!document.getElementById('profile-tag');
     const isTruckersMPPage = !!document.getElementById('profile-id') && !isValorantPage;
 
@@ -415,6 +398,10 @@ function initLiquidGlass() {
 }
 
 function showNotification(msg, type = "info") {
+  const toast = document.getElementById("osaka-toast");
+  const msgSpan = document.getElementById("toast-message");
+  const headerSpan = document.querySelector(".toast-header");
+
   if (!toast) return;
   if (!msgSpan) return;
   msgSpan.innerText = msg === null ? "" : (msg === undefined ? "" : msg);
@@ -494,21 +481,6 @@ function isValidSteamQuery(q) {
     if (/^\d+$/.test(s)) return true;
     if (s.length >= 3) return true;
     return false;
-}
-
-function runDeepAnalysis(statsArray) {
-    return { good: [], improve: [], overuse: [], missing: [], solutions: [] };
-}
-
-function openAnalysisModal(result) {
-    const modal = document.getElementById('analysis-modal');
-    const body = document.getElementById('analysis-body');
-    const titleEl = document.getElementById('analysis-title');
-    if (!modal) return;
-    if (!body) return;
-    body.textContent = 'Bu veri API tarafından sağlanmıyor.';
-    if (titleEl) titleEl.textContent = getTranslation('analysis_title');
-    modal.classList.add('open');
 }
 
 function renderHighlights(statsArray) {
@@ -915,9 +887,6 @@ async function executeSearch(userInput) {
 
 // --- Main Script ---
 document.addEventListener("DOMContentLoaded", () => {
-    const toast = document.getElementById("osaka-toast");
-    const msgSpan = document.getElementById("toast-message");
-    const headerSpan = document.querySelector(".toast-header");
     
     // Check LocalStorage or pre-injected preferred language
     const savedLang = window.__osaka_preferred_lang ? window.__osaka_preferred_lang : localStorage.getItem('osaka_lang');
@@ -1038,39 +1007,12 @@ document.addEventListener("DOMContentLoaded", () => {
         try { syncBottomActions(); } catch (e) {}
     }
 
-    function openSettings() { setSettingsOpen(true); }
-    function closeSettings() { setSettingsOpen(false); }
     function toggleSettings() { setSettingsOpen(!window.isSettingsOpen); }
+    window.toggleSettings = toggleSettings; // Expose to global scope for delegation if needed
+    function closeSettings() { setSettingsOpen(false); }
 
     // Ensure settings panel is closed on initial load
     closeSettings();
-
-    // Attach settings-fab toggles (works across pages)
-    (function bindSettingsFabs() {
-        const nodes = Array.from(document.querySelectorAll('.settings-fab, #settings-fab'));
-        nodes.forEach(fab => {
-            if (!fab) return;
-            if (fab.dataset._settingsBound) return;
-            try { fab.setAttribute('role', 'button'); } catch(e) {}
-            try { fab.setAttribute('aria-pressed', 'false'); } catch(e) {}
-            try { fab.style.cursor = 'pointer'; } catch(e) {}
-
-            const handler = (ev) => {
-                try { ev.stopPropagation(); } catch (err) {}
-                try { fab.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.96)' }, { transform: 'scale(1)' }], { duration: 220, easing: 'cubic-bezier(.2,.9,.2,1)' }); } catch (err) {}
-                toggleSettings();
-            };
-
-            fab.addEventListener('click', handler);
-            fab.addEventListener('keydown', (ev) => {
-                if (ev.key === 'Enter' || ev.key === ' ') {
-                    ev.preventDefault();
-                    handler(ev);
-                }
-            });
-            fab.dataset._settingsBound = '1';
-        });
-    })();
 
     // Close settings on route/hash/popstate
     window.addEventListener('popstate', closeSettings);
@@ -1124,14 +1066,13 @@ document.addEventListener("DOMContentLoaded", () => {
         lens.style.transition = 'transform 200ms cubic-bezier(0.2, 0.9, 0.2, 1), width 200ms cubic-bezier(0.2, 0.9, 0.2, 1)';
 
         const bias = 0;
-        let centers = [];
         let stableLensWidth = 0;
         let minX = 0;
         let maxX = 0;
 
         function layout() {
             const rectTrack = track.getBoundingClientRect();
-            centers = btns.map(b => {
+            const centers = btns.map(b => {
                 const r = b.getBoundingClientRect();
                 return { x: r.left - rectTrack.left + r.width / 2, w: r.width, h: r.height, left: r.left - rectTrack.left };
             });
@@ -1173,33 +1114,37 @@ document.addEventListener("DOMContentLoaded", () => {
             lens.style.setProperty('--lx', String(ratio));
         }
 
-        // RACE CONDITION FIX: ResizeObserver + Fonts Ready + Timeout
+        // RACE CONDITION FIX: Wait for fonts to be ready
+        function attemptLayout() {
+             if (document.fonts && document.fonts.ready) {
+                 document.fonts.ready.then(() => {
+                     layout();
+                     // Double check just in case
+                     setTimeout(layout, 100);
+                 }).catch(() => {
+                     // If font loading fails, layout anyway
+                     layout();
+                 });
+             } else {
+                 // Fallback for browsers without document.fonts API
+                 layout();
+                 window.addEventListener('load', layout);
+             }
+        }
+
+        attemptLayout();
+
         if (window.ResizeObserver) {
             const ro = new ResizeObserver(() => layout());
             ro.observe(track);
         }
-
-        if (document.fonts) {
-            document.fonts.ready.then(() => {
-                layout();
-                setTimeout(layout, 300); // Forced fallback
-            });
-        } else {
-            window.addEventListener('load', () => {
-                layout();
-                setTimeout(layout, 300);
-            });
-        }
         window.addEventListener('resize', layout);
 
-        btns.forEach((btn, i) => {
+        btns.forEach((btn) => {
             btn.addEventListener('click', () => {
                 btns.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-
-                // Immediately calculate new position for smooth slide
                 layout();
-
                 const lang = btn.getAttribute('data-lang');
                 if (lang) changeLanguage(lang);
             });
@@ -1215,12 +1160,11 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!lens || links.length === 0) return;
 
         const bias = 0;
-        let centers = [];
         let stableNavLensWidth = 0;
 
         function layout() {
             const rectTrack = track.getBoundingClientRect();
-            centers = links.map(a => {
+            const centers = links.map(a => {
                 const r = a.getBoundingClientRect();
                 return { x: r.left - rectTrack.left + r.width / 2, w: r.width, h: r.height, left: r.left - rectTrack.left };
             });
@@ -1251,42 +1195,36 @@ document.addEventListener("DOMContentLoaded", () => {
             lens.style.opacity = '1';
         }
 
-        layout();
+        if (document.fonts && document.fonts.ready) {
+            document.fonts.ready.then(() => {
+                layout();
+                setTimeout(layout, 100);
+            });
+        } else {
+            layout();
+            window.addEventListener('load', layout);
+        }
 
-        // RACE CONDITION FIX: ResizeObserver + Fonts Ready + Timeout
         if (window.ResizeObserver) {
             const ro2 = new ResizeObserver(() => layout());
             ro2.observe(track);
         }
-
-        if (document.fonts) {
-            document.fonts.ready.then(() => {
-                layout();
-                setTimeout(layout, 300); // Forced fallback
-            });
-        }
-
         window.addEventListener('resize', layout);
-        window.addEventListener('load', () => {
-            layout();
-            setTimeout(layout, 300);
-        });
     }
     initNavSelector();
 
-    // Ensure settings-fab always has top z-index and global delegated click handling
+    // GLOBAL DELEGATION FOR SETTINGS FAB
     document.body.addEventListener('click', function(e) {
-        const fab = e.target.closest && e.target.closest('#settings-fab, .settings-fab');
+        // Check if click target is settings-fab or inside it
+        const fab = e.target.closest('#settings-fab') || e.target.closest('.settings-fab');
         if (fab) {
             e.preventDefault();
             e.stopPropagation();
+            // Force z-index logic just in case CSS missed it (backup)
             fab.style.setProperty('z-index', '2147483647', 'important');
-            if (typeof toggleSettings === 'function') {
-                toggleSettings();
-            }
-            return;
+            toggleSettings();
         }
-    }, true);
+    }, true); // Use capture phase to ensure we catch it
 
     window.changeLanguage = function(lang) {
         try { closeSettings(); } catch (e) {}
@@ -1368,7 +1306,6 @@ document.addEventListener("DOMContentLoaded", () => {
         lastRenderWidth = w;
     });
 
-    const settingsFab = document.getElementById('settings-fab');
     let bottomActions = document.getElementById('bottom-actions');
     function isMobileUI() {
         if (window.innerWidth > 768) return false;
@@ -1421,9 +1358,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const baSettings = el.querySelector('#ba-settings');
         if (baSettings) {
             baSettings.addEventListener('click', () => {
-                try { toggleSettings(); } catch (e) {
-                    if (settingsPanelElement) settingsPanelElement.classList.toggle('open');
-                }
+                toggleSettings();
                 syncBottomActions();
             });
         }
@@ -1443,17 +1378,12 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         ba.hidden = window.isSettingsOpen ? false : true;
     }
-    if (settingsFab) {
-        settingsFab.addEventListener('click', (e) => {
-            e.stopPropagation();
-            toggleSettings();
-        });
-    }
+
     document.addEventListener('click', (e) => {
         if (!window.isSettingsOpen) return;
         const t = e.target;
         let inside = false;
-        if (settingsFab && settingsFab.contains(t)) inside = true;
+        if (t.closest('#settings-fab, .settings-fab')) inside = true;
         const panel = document.getElementById('settings-panel');
         if (panel && panel.contains(t)) inside = true;
         const ba = document.getElementById('bottom-actions');
