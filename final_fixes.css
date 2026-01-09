@@ -1,0 +1,61 @@
+/* --- CSS SNIPPET FOR NAVBAR & LANGUAGE SELECTOR --- */
+
+/* 1. Navbar Standardization */
+.navbar-content {
+    width: 100%;
+    max-width: 1200px; /* Consistency Rule */
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    padding: 0 30px;
+    height: 100%;
+    font-family: "Inter", sans-serif;
+    position: relative;
+}
+
+/* 2. Absolute Centering for Nav Track */
+.nav-track {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: inline-flex;
+    gap: 0;
+    padding: 8px 30px;
+    min-width: 500px;
+    white-space: nowrap;
+    border-radius: 999px;
+    background: rgba(0,0,0,0.25);
+    border: 1px solid rgba(255,255,255,0.08);
+    flex-grow: 0;
+    justify-content: center;
+}
+
+/* 3. Settings FAB (Functionality & Z-Index) */
+.settings-fab {
+    position: fixed;
+    bottom: 20px;
+    left: 18px;
+    width: 44px;
+    height: 44px;
+    border-radius: 999px;
+    display: grid;
+    place-items: center;
+    z-index: 2147483647 !important; /* Force Highest Z-Index */
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.18);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15), inset 0 1px 1px rgba(255,255,255,0.25);
+    color: var(--gear-color);
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+/* 4. Language Selector Active State */
+.lang-track button.active {
+    color: var(--accent) !important;
+    text-shadow: 0 0 10px rgba(255, 174, 0, 0.4);
+}
+.lang-track button {
+    padding: 8px 16px; /* Corrected Padding */
+}
