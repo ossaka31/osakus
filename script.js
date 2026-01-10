@@ -230,21 +230,40 @@ function updateActiveLangButton(lang) {
 
     activeBtn.classList.add('active');
 
-    const rectTrack = track.getBoundingClientRect();
-    const rectBtn = activeBtn.getBoundingClientRect();
-    const h = rectBtn.height;
-    const lensW = min2(rectBtn.width, roundPx(h * 1.3));
+    // Make sure font is loaded before calculating
+    if (document.fonts) {
+        document.fonts.ready.then(() => {
+             const rectTrack = track.getBoundingClientRect();
+             const rectBtn = activeBtn.getBoundingClientRect();
+             const h = rectBtn.height;
+             const lensW = min2(rectBtn.width, roundPx(h * 1.3));
 
-    lens.style.width = lensW + 'px';
-    lens.style.height = h + 'px';
-    lens.style.top = (rectBtn.top - rectTrack.top) + 'px';
+             lens.style.width = lensW + 'px';
+             lens.style.height = h + 'px';
+             lens.style.top = (rectBtn.top - rectTrack.top) + 'px';
 
-    const centerX = (rectBtn.left - rectTrack.left) + rectBtn.width / 2;
-    const bias = -6;
-    const lensX = centerX - (lensW / 2) + bias;
+             const centerX = (rectBtn.left - rectTrack.left) + rectBtn.width / 2;
+             const bias = -6;
+             const lensX = centerX - (lensW / 2) + bias;
 
-    lens.style.transform = 'translateX(' + roundPx(lensX) + 'px)';
-    lens.classList.add('active');
+             lens.style.transform = 'translateX(' + roundPx(lensX) + 'px)';
+             lens.classList.add('active');
+        });
+    } else {
+         // Fallback
+         const rectTrack = track.getBoundingClientRect();
+         const rectBtn = activeBtn.getBoundingClientRect();
+         const h = rectBtn.height;
+         const lensW = min2(rectBtn.width, roundPx(h * 1.3));
+         lens.style.width = lensW + 'px';
+         lens.style.height = h + 'px';
+         lens.style.top = (rectBtn.top - rectTrack.top) + 'px';
+         const centerX = (rectBtn.left - rectTrack.left) + rectBtn.width / 2;
+         const bias = -6;
+         const lensX = centerX - (lensW / 2) + bias;
+         lens.style.transform = 'translateX(' + roundPx(lensX) + 'px)';
+         lens.classList.add('active');
+    }
 }
 
 window.downloadPDF = function() {
@@ -1045,33 +1064,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // Ensure settings panel is closed on initial load
     closeSettings();
 
-    // Attach settings-fab toggles (works across pages)
-    (function bindSettingsFabs() {
-        const nodes = Array.from(document.querySelectorAll('.settings-fab, #settings-fab'));
-        nodes.forEach(fab => {
-            if (!fab) return;
-            if (fab.dataset._settingsBound) return;
-            try { fab.setAttribute('role', 'button'); } catch(e) {}
-            try { fab.setAttribute('aria-pressed', 'false'); } catch(e) {}
-            try { fab.style.cursor = 'pointer'; } catch(e) {}
-
-            const handler = (ev) => {
-                try { ev.stopPropagation(); } catch (err) {}
-                try { fab.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.96)' }, { transform: 'scale(1)' }], { duration: 220, easing: 'cubic-bezier(.2,.9,.2,1)' }); } catch (err) {}
-                toggleSettings();
-            };
-
-            fab.addEventListener('click', handler);
-            fab.addEventListener('keydown', (ev) => {
-                if (ev.key === 'Enter' || ev.key === ' ') {
-                    ev.preventDefault();
-                    handler(ev);
-                }
-            });
-            fab.dataset._settingsBound = '1';
-        });
-    })();
-
     // Close settings on route/hash/popstate
     window.addEventListener('popstate', closeSettings);
     window.addEventListener('hashchange', closeSettings);
@@ -1173,21 +1165,24 @@ document.addEventListener("DOMContentLoaded", () => {
             lens.style.setProperty('--lx', String(ratio));
         }
 
-        // RACE CONDITION FIX: ResizeObserver + Fonts Ready + Timeout
-        if (window.ResizeObserver) {
-            const ro = new ResizeObserver(() => layout());
-            ro.observe(track);
-        }
-
+        // RACE CONDITION FIX: Do not calculate dimensions until document.fonts.ready is resolved.
         if (document.fonts) {
             document.fonts.ready.then(() => {
                 layout();
-                setTimeout(layout, 300); // Forced fallback
+                // Also setup ResizeObserver only after fonts are ready
+                 if (window.ResizeObserver) {
+                    const ro = new ResizeObserver(() => layout());
+                    ro.observe(track);
+                }
             });
         } else {
+             // Fallback for browsers without document.fonts
             window.addEventListener('load', () => {
                 layout();
-                setTimeout(layout, 300);
+                 if (window.ResizeObserver) {
+                    const ro = new ResizeObserver(() => layout());
+                    ro.observe(track);
+                }
             });
         }
         window.addEventListener('resize', layout);
@@ -1251,36 +1246,40 @@ document.addEventListener("DOMContentLoaded", () => {
             lens.style.opacity = '1';
         }
 
-        layout();
-
-        // RACE CONDITION FIX: ResizeObserver + Fonts Ready + Timeout
-        if (window.ResizeObserver) {
-            const ro2 = new ResizeObserver(() => layout());
-            ro2.observe(track);
-        }
-
+        // RACE CONDITION FIX: Similar wait for fonts
         if (document.fonts) {
             document.fonts.ready.then(() => {
                 layout();
-                setTimeout(layout, 300); // Forced fallback
+                 if (window.ResizeObserver) {
+                    const ro2 = new ResizeObserver(() => layout());
+                    ro2.observe(track);
+                }
             });
+        } else {
+             window.addEventListener('load', () => {
+                layout();
+                 if (window.ResizeObserver) {
+                    const ro2 = new ResizeObserver(() => layout());
+                    ro2.observe(track);
+                }
+             });
         }
 
         window.addEventListener('resize', layout);
-        window.addEventListener('load', () => {
-            layout();
-            setTimeout(layout, 300);
-        });
     }
     initNavSelector();
 
     // Ensure settings-fab always has top z-index and global delegated click handling
+    // Event Delegation: click listener is attached to document.body
     document.body.addEventListener('click', function(e) {
         const fab = e.target.closest && e.target.closest('#settings-fab, .settings-fab');
         if (fab) {
             e.preventDefault();
             e.stopPropagation();
             fab.style.setProperty('z-index', '2147483647', 'important');
+            // Animate
+            try { fab.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.96)' }, { transform: 'scale(1)' }], { duration: 220, easing: 'cubic-bezier(.2,.9,.2,1)' }); } catch (err) {}
+
             if (typeof toggleSettings === 'function') {
                 toggleSettings();
             }
@@ -1443,12 +1442,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         ba.hidden = window.isSettingsOpen ? false : true;
     }
-    if (settingsFab) {
-        settingsFab.addEventListener('click', (e) => {
-            e.stopPropagation();
-            toggleSettings();
-        });
-    }
+    // Removed direct listener on settingsFab because of delegation
     document.addEventListener('click', (e) => {
         if (!window.isSettingsOpen) return;
         const t = e.target;
