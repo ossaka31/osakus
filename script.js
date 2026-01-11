@@ -230,21 +230,7 @@ function updateActiveLangButton(lang) {
 
     activeBtn.classList.add('active');
 
-    const rectTrack = track.getBoundingClientRect();
-    const rectBtn = activeBtn.getBoundingClientRect();
-    const h = rectBtn.height;
-    const lensW = min2(rectBtn.width, roundPx(h * 1.3));
-
-    lens.style.width = lensW + 'px';
-    lens.style.height = h + 'px';
-    lens.style.top = (rectBtn.top - rectTrack.top) + 'px';
-
-    const centerX = (rectBtn.left - rectTrack.left) + rectBtn.width / 2;
-    const bias = -6;
-    const lensX = centerX - (lensW / 2) + bias;
-
-    lens.style.transform = 'translateX(' + roundPx(lensX) + 'px)';
-    lens.classList.add('active');
+    // Calculations deferred to layout() inside initLangSelector to handle font loading
 }
 
 window.downloadPDF = function() {
@@ -415,6 +401,10 @@ function initLiquidGlass() {
 }
 
 function showNotification(msg, type = "info") {
+  const toast = document.getElementById("osaka-toast");
+  const msgSpan = document.getElementById("toast-message");
+  const headerSpan = document.querySelector(".toast-header");
+
   if (!toast) return;
   if (!msgSpan) return;
   msgSpan.innerText = msg === null ? "" : (msg === undefined ? "" : msg);
@@ -1061,7 +1051,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 toggleSettings();
             };
 
-            fab.addEventListener('click', handler);
+            // Remove direct click listeners, rely on delegation or keep as fallback
+            // But prompt asks for delegation. The global delegation below handles it.
+            // We can keep this for keyboard support or specific animation.
             fab.addEventListener('keydown', (ev) => {
                 if (ev.key === 'Enter' || ev.key === ' ') {
                     ev.preventDefault();
@@ -1174,31 +1166,43 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         // RACE CONDITION FIX: ResizeObserver + Fonts Ready + Timeout
+        // STRICT REQUIREMENT: "do NOT calculate dimensions until document.fonts.ready is resolved"
+
+        let fontResolved = false;
+
+        const safeLayout = () => {
+             if (fontResolved) layout();
+        };
+
         if (window.ResizeObserver) {
-            const ro = new ResizeObserver(() => layout());
+            const ro = new ResizeObserver(() => safeLayout());
             ro.observe(track);
         }
 
+        window.addEventListener('resize', safeLayout);
+
         if (document.fonts) {
             document.fonts.ready.then(() => {
+                fontResolved = true;
                 layout();
-                setTimeout(layout, 300); // Forced fallback
+                setTimeout(layout, 300); // Forced fallback just in case
             });
         } else {
+            // Fallback for browsers without document.fonts
             window.addEventListener('load', () => {
-                layout();
-                setTimeout(layout, 300);
+                 fontResolved = true;
+                 layout();
+                 setTimeout(layout, 300);
             });
         }
-        window.addEventListener('resize', layout);
 
         btns.forEach((btn, i) => {
             btn.addEventListener('click', () => {
                 btns.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
 
-                // Immediately calculate new position for smooth slide
-                layout();
+                // Immediately calculate new position for smooth slide if fonts are ready
+                safeLayout();
 
                 const lang = btn.getAttribute('data-lang');
                 if (lang) changeLanguage(lang);
@@ -1251,42 +1255,50 @@ document.addEventListener("DOMContentLoaded", () => {
             lens.style.opacity = '1';
         }
 
-        layout();
+        // RACE CONDITION FIX: Same as lang selector
+        let fontResolved = false;
+        const safeLayout = () => { if (fontResolved) layout(); };
 
-        // RACE CONDITION FIX: ResizeObserver + Fonts Ready + Timeout
         if (window.ResizeObserver) {
-            const ro2 = new ResizeObserver(() => layout());
+            const ro2 = new ResizeObserver(() => safeLayout());
             ro2.observe(track);
         }
 
+        window.addEventListener('resize', safeLayout);
+
         if (document.fonts) {
             document.fonts.ready.then(() => {
+                fontResolved = true;
                 layout();
                 setTimeout(layout, 300); // Forced fallback
             });
+        } else {
+             window.addEventListener('load', () => {
+                 fontResolved = true;
+                 layout();
+                 setTimeout(layout, 300);
+            });
         }
-
-        window.addEventListener('resize', layout);
-        window.addEventListener('load', () => {
-            layout();
-            setTimeout(layout, 300);
-        });
     }
     initNavSelector();
 
-    // Ensure settings-fab always has top z-index and global delegated click handling
+    // GLOBAL EVENT DELEGATION FOR SETTINGS FAB
+    // Catches clicks on .settings-fab or #settings-fab anywhere in the document
     document.body.addEventListener('click', function(e) {
-        const fab = e.target.closest && e.target.closest('#settings-fab, .settings-fab');
+        const fab = e.target.closest('#settings-fab') || e.target.closest('.settings-fab');
         if (fab) {
             e.preventDefault();
             e.stopPropagation();
+
+            // Force styles just in case CSS didn't catch it
             fab.style.setProperty('z-index', '2147483647', 'important');
+            fab.style.setProperty('pointer-events', 'auto', 'important');
+
             if (typeof toggleSettings === 'function') {
                 toggleSettings();
             }
-            return;
         }
-    }, true);
+    }, true); // Capture phase to ensure we get it first
 
     window.changeLanguage = function(lang) {
         try { closeSettings(); } catch (e) {}
@@ -1442,12 +1454,6 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
         ba.hidden = window.isSettingsOpen ? false : true;
-    }
-    if (settingsFab) {
-        settingsFab.addEventListener('click', (e) => {
-            e.stopPropagation();
-            toggleSettings();
-        });
     }
     document.addEventListener('click', (e) => {
         if (!window.isSettingsOpen) return;
