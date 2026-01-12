@@ -222,8 +222,8 @@
 
   .navbar-content {
       width: 100%;
-      /* REQ 1: Drastic Widening */
-      max-width: 1600px;
+      /* REQ 1: Fixed max-width to match index.html */
+      max-width: 1200px;
       margin: 0 auto;
       display: flex;
       justify-content: space-between;
@@ -246,12 +246,12 @@
 
   /* NAV LENS SYSTEM (Standardized) */
   .nav-track {
-    position: absolute; /* Requirement: Absolute Centering */
+    /* REQ 1: Absolute Centering */
+    position: absolute;
     left: 50%;
     transform: translateX(-50%);
     display: inline-flex;
     gap: 0;
-    /* REQ 1: Padding & Min-Width */
     padding: 8px 30px;
     min-width: 500px;
     white-space: nowrap;
@@ -473,13 +473,14 @@
     border-radius: 999px;
     display: grid;
     place-items: center;
-    /* Requirement: NUKE Z-INDEX */
+    /* REQ 2: Z-Index Nuke */
     z-index: 2147483647 !important;
     background: rgba(255,255,255,0.06);
     border: 1px solid rgba(255,255,255,0.18);
     box-shadow: 0 4px 12px rgba(0,0,0,0.15), inset 0 1px 1px rgba(255,255,255,0.25);
     color: var(--gear-color);
     cursor: pointer;
+    /* REQ 2: Pointer Events Auto */
     pointer-events: auto;
   }
   .settings-fab i { font-size: 22px; line-height: 1; }
@@ -517,7 +518,7 @@
     align-items: flex-start;
     gap: 12px;
     margin-bottom: 10px;
-    /* REQ 4: Wrap */
+    /* REQ 4: Flex Wrap */
     flex-wrap: wrap;
   }
   .settings-row .label {
@@ -638,11 +639,12 @@
       cursor: pointer;
       transition: color 0.2s;
       font-size: 0.9rem;
-      padding: 8px 16px; /* Requirement: Adjusted padding */
+      /* REQ 3: Padding Adjustment */
+      padding: 8px 16px;
       border-radius: 999px;
       will-change: color;
   }
-  /* Requirement: Active language color */
+  /* REQ 3: Active language color */
   .lang-track button.active {
       color: var(--accent) !important;
       text-shadow: 0 0 10px rgba(255, 174, 0, 0.4);
