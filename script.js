@@ -8,6 +8,9 @@ let lastFaceit = null;
 let accordionState = { cat_general: false, cat_weapons: false, cat_maps: false };
 let isSearching = false;
 
+// Custom Event for Layout Updates
+const layoutUpdateEvent = new Event('osaka-layout-update');
+
 function requireFields(obj, fields) {
     for (const f of fields) {
         const v = obj[f];
@@ -218,33 +221,15 @@ function analyzePerformance(stats, profile) {
 function updateActiveLangButton(lang) {
     const container = document.querySelector('.lang-selector');
     const track = container ? container.querySelector('.lang-track') : null;
-    const lens = track ? track.querySelector('.lang-lens') : null;
     const btns = Array.from(track ? track.querySelectorAll('button') : []);
 
     btns.forEach(btn => btn.classList.remove('active'));
 
     const activeBtn = track ? track.querySelector(`button[data-lang="${lang}"]`) : null;
-    if (!activeBtn) return;
-    if (!lens) return;
-    if (!track) return;
+    if (activeBtn) activeBtn.classList.add('active');
 
-    activeBtn.classList.add('active');
-
-    const rectTrack = track.getBoundingClientRect();
-    const rectBtn = activeBtn.getBoundingClientRect();
-    const h = rectBtn.height;
-    const lensW = min2(rectBtn.width, roundPx(h * 1.3));
-
-    lens.style.width = lensW + 'px';
-    lens.style.height = h + 'px';
-    lens.style.top = (rectBtn.top - rectTrack.top) + 'px';
-
-    const centerX = (rectBtn.left - rectTrack.left) + rectBtn.width / 2;
-    const bias = -6;
-    const lensX = centerX - (lensW / 2) + bias;
-
-    lens.style.transform = 'translateX(' + roundPx(lensX) + 'px)';
-    lens.classList.add('active');
+    // Trigger global layout update to fix lens position
+    window.dispatchEvent(layoutUpdateEvent);
 }
 
 window.downloadPDF = function() {
@@ -1131,6 +1116,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
         function layout() {
             const rectTrack = track.getBoundingClientRect();
+            // Safety check if track is hidden
+            if (rectTrack.width === 0) return;
+
             centers = btns.map(b => {
                 const r = b.getBoundingClientRect();
                 return { x: r.left - rectTrack.left + r.width / 2, w: r.width, h: r.height, left: r.left - rectTrack.left };
@@ -1148,6 +1136,8 @@ document.addEventListener("DOMContentLoaded", () => {
             const idx = btns.indexOf(activeBtn);
             if (idx === -1) return;
             const c = centers[idx];
+            if (!c) return;
+
             const btnRect = activeBtn.getBoundingClientRect();
             const h = btnRect.height;
             const cap = roundPx(h * 1.15);
@@ -1173,22 +1163,27 @@ document.addEventListener("DOMContentLoaded", () => {
             lens.style.setProperty('--lx', String(ratio));
         }
 
-        // RACE CONDITION FIX: ResizeObserver + Fonts Ready + Timeout
-        if (window.ResizeObserver) {
-            const ro = new ResizeObserver(() => layout());
-            ro.observe(track);
-        }
+        // Listen for global layout update request
+        window.addEventListener('osaka-layout-update', layout);
 
+        // RACE CONDITION FIX: Do not calculate until fonts are ready
+        // We do NOT call layout() immediately here.
         if (document.fonts) {
             document.fonts.ready.then(() => {
                 layout();
-                setTimeout(layout, 300); // Forced fallback
+                setTimeout(layout, 150);
             });
         } else {
             window.addEventListener('load', () => {
                 layout();
-                setTimeout(layout, 300);
+                setTimeout(layout, 150);
             });
+        }
+
+        // Also observe resizing
+        if (window.ResizeObserver) {
+            const ro = new ResizeObserver(() => layout());
+            ro.observe(track);
         }
         window.addEventListener('resize', layout);
 
@@ -1220,6 +1215,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         function layout() {
             const rectTrack = track.getBoundingClientRect();
+             if (rectTrack.width === 0) return;
+
             centers = links.map(a => {
                 const r = a.getBoundingClientRect();
                 return { x: r.left - rectTrack.left + r.width / 2, w: r.width, h: r.height, left: r.left - rectTrack.left };
@@ -1234,7 +1231,10 @@ document.addEventListener("DOMContentLoaded", () => {
             links.forEach(l => l.classList.remove('active'));
             active.classList.add('active');
             const idx = links.indexOf(active);
+            if (idx === -1) return;
+
             const c = centers[idx];
+            if (!c) return;
             const r = active.getBoundingClientRect();
             const h = r.height;
             const lensW = min2(r.width, roundPx(h * 1.3));
@@ -1251,36 +1251,34 @@ document.addEventListener("DOMContentLoaded", () => {
             lens.style.opacity = '1';
         }
 
-        layout();
+        // Apply same race condition fix
+        if (document.fonts) {
+            document.fonts.ready.then(() => {
+                layout();
+                setTimeout(layout, 150);
+            });
+        } else {
+             window.addEventListener('load', () => {
+                layout();
+                setTimeout(layout, 150);
+             });
+        }
 
-        // RACE CONDITION FIX: ResizeObserver + Fonts Ready + Timeout
         if (window.ResizeObserver) {
             const ro2 = new ResizeObserver(() => layout());
             ro2.observe(track);
         }
-
-        if (document.fonts) {
-            document.fonts.ready.then(() => {
-                layout();
-                setTimeout(layout, 300); // Forced fallback
-            });
-        }
-
         window.addEventListener('resize', layout);
-        window.addEventListener('load', () => {
-            layout();
-            setTimeout(layout, 300);
-        });
     }
     initNavSelector();
 
     // Ensure settings-fab always has top z-index and global delegated click handling
     document.body.addEventListener('click', function(e) {
+        // SETTINGS FAB DELEGATION - STRICT CHECK
         const fab = e.target.closest && e.target.closest('#settings-fab, .settings-fab');
         if (fab) {
             e.preventDefault();
             e.stopPropagation();
-            fab.style.setProperty('z-index', '2147483647', 'important');
             if (typeof toggleSettings === 'function') {
                 toggleSettings();
             }

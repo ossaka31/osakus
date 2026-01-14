@@ -222,8 +222,8 @@
 
   .navbar-content {
       width: 100%;
-      /* REQ 1: Drastic Widening */
-      max-width: 1600px;
+      /* REQ 1: Fixed max-width to match standardized layout */
+      max-width: 1200px;
       margin: 0 auto;
       display: flex;
       justify-content: space-between;
@@ -473,14 +473,14 @@
     border-radius: 999px;
     display: grid;
     place-items: center;
-    /* Requirement: NUKE Z-INDEX */
+    /* Requirement: NUKE Z-INDEX & Pointer Events */
     z-index: 2147483647 !important;
+    pointer-events: auto;
     background: rgba(255,255,255,0.06);
     border: 1px solid rgba(255,255,255,0.18);
     box-shadow: 0 4px 12px rgba(0,0,0,0.15), inset 0 1px 1px rgba(255,255,255,0.25);
     color: var(--gear-color);
     cursor: pointer;
-    pointer-events: auto;
   }
   .settings-fab i { font-size: 22px; line-height: 1; }
   body.theme-amoled { --gear-color: #b8b8b8; }
@@ -638,11 +638,11 @@
       cursor: pointer;
       transition: color 0.2s;
       font-size: 0.9rem;
-      padding: 8px 16px; /* Requirement: Adjusted padding */
+      padding: 8px 16px; /* REQ: Adjusted Padding */
       border-radius: 999px;
       will-change: color;
   }
-  /* Requirement: Active language color */
+  /* REQ: Active language orange + shadow */
   .lang-track button.active {
       color: var(--accent) !important;
       text-shadow: 0 0 10px rgba(255, 174, 0, 0.4);
@@ -822,6 +822,7 @@
     </div>
 </nav>
 
+<!-- REQ: Settings FAB direct child of body -->
 <button id="settings-fab" class="settings-fab liquid-glass" aria-label="Ayarlar"><i class="fa fa-gear"></i></button>
 
 <div id="osaka-toast">
