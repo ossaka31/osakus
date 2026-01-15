@@ -230,21 +230,8 @@ function updateActiveLangButton(lang) {
 
     activeBtn.classList.add('active');
 
-    const rectTrack = track.getBoundingClientRect();
-    const rectBtn = activeBtn.getBoundingClientRect();
-    const h = rectBtn.height;
-    const lensW = min2(rectBtn.width, roundPx(h * 1.3));
-
-    lens.style.width = lensW + 'px';
-    lens.style.height = h + 'px';
-    lens.style.top = (rectBtn.top - rectTrack.top) + 'px';
-
-    const centerX = (rectBtn.left - rectTrack.left) + rectBtn.width / 2;
-    const bias = -6;
-    const lensX = centerX - (lensW / 2) + bias;
-
-    lens.style.transform = 'translateX(' + roundPx(lensX) + 'px)';
-    lens.classList.add('active');
+    // Trigger layout update via event
+    window.dispatchEvent(new Event('osaka-layout-update'));
 }
 
 window.downloadPDF = function() {
@@ -1130,7 +1117,13 @@ document.addEventListener("DOMContentLoaded", () => {
         let maxX = 0;
 
         function layout() {
+            // Check if fonts are ready (strict requirement) or if we are forced
+            // If the font is not loaded, dimensions might be wrong.
+            // But we must check if document.fonts is supported.
+
             const rectTrack = track.getBoundingClientRect();
+            if (rectTrack.width === 0) return; // Not visible yet
+
             centers = btns.map(b => {
                 const r = b.getBoundingClientRect();
                 return { x: r.left - rectTrack.left + r.width / 2, w: r.width, h: r.height, left: r.left - rectTrack.left };
@@ -1173,24 +1166,28 @@ document.addEventListener("DOMContentLoaded", () => {
             lens.style.setProperty('--lx', String(ratio));
         }
 
-        // RACE CONDITION FIX: ResizeObserver + Fonts Ready + Timeout
-        if (window.ResizeObserver) {
-            const ro = new ResizeObserver(() => layout());
-            ro.observe(track);
-        }
-
+        // RACE CONDITION FIX: Wait for fonts before initial layout
         if (document.fonts) {
             document.fonts.ready.then(() => {
                 layout();
-                setTimeout(layout, 300); // Forced fallback
+                // Also adding a resize observer AFTER fonts are ready
+                if (window.ResizeObserver) {
+                   const ro = new ResizeObserver(() => layout());
+                   ro.observe(track);
+                }
             });
         } else {
-            window.addEventListener('load', () => {
+             window.addEventListener('load', () => {
                 layout();
-                setTimeout(layout, 300);
+                if (window.ResizeObserver) {
+                   const ro = new ResizeObserver(() => layout());
+                   ro.observe(track);
+                }
             });
         }
+
         window.addEventListener('resize', layout);
+        window.addEventListener('osaka-layout-update', layout);
 
         btns.forEach((btn, i) => {
             btn.addEventListener('click', () => {
@@ -1251,19 +1248,21 @@ document.addEventListener("DOMContentLoaded", () => {
             lens.style.opacity = '1';
         }
 
-        layout();
-
-        // RACE CONDITION FIX: ResizeObserver + Fonts Ready + Timeout
-        if (window.ResizeObserver) {
-            const ro2 = new ResizeObserver(() => layout());
-            ro2.observe(track);
-        }
-
+        // Wait for fonts here too
         if (document.fonts) {
             document.fonts.ready.then(() => {
                 layout();
-                setTimeout(layout, 300); // Forced fallback
+                if (window.ResizeObserver) {
+                    const ro2 = new ResizeObserver(() => layout());
+                    ro2.observe(track);
+                }
             });
+        } else {
+             layout();
+             if (window.ResizeObserver) {
+                const ro2 = new ResizeObserver(() => layout());
+                ro2.observe(track);
+             }
         }
 
         window.addEventListener('resize', layout);
@@ -1275,18 +1274,36 @@ document.addEventListener("DOMContentLoaded", () => {
     initNavSelector();
 
     // Ensure settings-fab always has top z-index and global delegated click handling
+    // Delegation on document.body as required
     document.body.addEventListener('click', function(e) {
+        // Handle clicks on FAB or inside it
         const fab = e.target.closest && e.target.closest('#settings-fab, .settings-fab');
         if (fab) {
             e.preventDefault();
             e.stopPropagation();
-            fab.style.setProperty('z-index', '2147483647', 'important');
+            // Removed JS z-index hack as per code review feedback to rely on CSS.
+
+            // Call toggleSettings
             if (typeof toggleSettings === 'function') {
                 toggleSettings();
+            } else {
+                // Fallback if toggleSettings isn't in scope (should be)
+                const panel = document.getElementById('settings-panel');
+                if(panel) {
+                   if(panel.classList.contains('open')) {
+                       panel.classList.remove('open');
+                       window.isSettingsOpen = false;
+                   } else {
+                       // We need to mount it if not present
+                       if(!panel.parentNode) document.body.appendChild(panel);
+                       panel.classList.add('open');
+                       window.isSettingsOpen = true;
+                   }
+                }
             }
             return;
         }
-    }, true);
+    }, true); // Capture phase to be sure
 
     window.changeLanguage = function(lang) {
         try { closeSettings(); } catch (e) {}

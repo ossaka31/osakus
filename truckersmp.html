@@ -222,8 +222,8 @@
 
   .navbar-content {
       width: 100%;
-      /* REQ 1: Drastic Widening */
-      max-width: 1600px;
+      /* REQ 1: Drastic Widening - FIXED to 1200px */
+      max-width: 1200px;
       margin: 0 auto;
       display: flex;
       justify-content: space-between;
@@ -480,6 +480,7 @@
     box-shadow: 0 4px 12px rgba(0,0,0,0.15), inset 0 1px 1px rgba(255,255,255,0.25);
     color: var(--gear-color);
     cursor: pointer;
+    /* Requirement: Pointer Events */
     pointer-events: auto;
   }
   .settings-fab i { font-size: 22px; line-height: 1; }
@@ -638,11 +639,12 @@
       cursor: pointer;
       transition: color 0.2s;
       font-size: 0.9rem;
-      padding: 8px 16px; /* Requirement: Adjusted padding */
+      /* Requirement: Padding */
+      padding: 8px 16px;
       border-radius: 999px;
       will-change: color;
   }
-  /* Requirement: Active language color */
+  /* Requirement: Active Color */
   .lang-track button.active {
       color: var(--accent) !important;
       text-shadow: 0 0 10px rgba(255, 174, 0, 0.4);
