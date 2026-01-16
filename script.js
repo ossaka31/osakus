@@ -1072,6 +1072,14 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     })();
 
+    // Force settings-fab to be direct child of body
+    (function ensureFabPosition() {
+        const fab = document.getElementById('settings-fab');
+        if (fab && fab.parentNode !== document.body) {
+            document.body.appendChild(fab);
+        }
+    })();
+
     // Close settings on route/hash/popstate
     window.addEventListener('popstate', closeSettings);
     window.addEventListener('hashchange', closeSettings);
@@ -1173,33 +1181,30 @@ document.addEventListener("DOMContentLoaded", () => {
             lens.style.setProperty('--lx', String(ratio));
         }
 
-        // RACE CONDITION FIX: ResizeObserver + Fonts Ready + Timeout
-        if (window.ResizeObserver) {
-            const ro = new ResizeObserver(() => layout());
-            ro.observe(track);
-        }
+        const runInit = () => {
+             layout();
+             if (window.ResizeObserver) {
+                const ro = new ResizeObserver(() => layout());
+                ro.observe(track);
+             }
+             window.addEventListener('resize', layout);
+        };
 
+        // RACE CONDITION FIX: Wait for fonts!
         if (document.fonts) {
             document.fonts.ready.then(() => {
-                layout();
-                setTimeout(layout, 300); // Forced fallback
+                runInit();
+                setTimeout(layout, 300); // extra safety
             });
         } else {
-            window.addEventListener('load', () => {
-                layout();
-                setTimeout(layout, 300);
-            });
+            window.addEventListener('load', runInit);
         }
-        window.addEventListener('resize', layout);
 
         btns.forEach((btn, i) => {
             btn.addEventListener('click', () => {
                 btns.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-
-                // Immediately calculate new position for smooth slide
                 layout();
-
                 const lang = btn.getAttribute('data-lang');
                 if (lang) changeLanguage(lang);
             });
@@ -1251,26 +1256,23 @@ document.addEventListener("DOMContentLoaded", () => {
             lens.style.opacity = '1';
         }
 
-        layout();
-
-        // RACE CONDITION FIX: ResizeObserver + Fonts Ready + Timeout
-        if (window.ResizeObserver) {
-            const ro2 = new ResizeObserver(() => layout());
-            ro2.observe(track);
-        }
+        const runInit = () => {
+             layout();
+             if (window.ResizeObserver) {
+                const ro = new ResizeObserver(() => layout());
+                ro.observe(track);
+             }
+             window.addEventListener('resize', layout);
+        };
 
         if (document.fonts) {
             document.fonts.ready.then(() => {
-                layout();
-                setTimeout(layout, 300); // Forced fallback
+                runInit();
+                setTimeout(layout, 300); // extra safety
             });
+        } else {
+             window.addEventListener('load', runInit);
         }
-
-        window.addEventListener('resize', layout);
-        window.addEventListener('load', () => {
-            layout();
-            setTimeout(layout, 300);
-        });
     }
     initNavSelector();
 
