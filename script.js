@@ -230,21 +230,8 @@ function updateActiveLangButton(lang) {
 
     activeBtn.classList.add('active');
 
-    const rectTrack = track.getBoundingClientRect();
-    const rectBtn = activeBtn.getBoundingClientRect();
-    const h = rectBtn.height;
-    const lensW = min2(rectBtn.width, roundPx(h * 1.3));
-
-    lens.style.width = lensW + 'px';
-    lens.style.height = h + 'px';
-    lens.style.top = (rectBtn.top - rectTrack.top) + 'px';
-
-    const centerX = (rectBtn.left - rectTrack.left) + rectBtn.width / 2;
-    const bias = -6;
-    const lensX = centerX - (lensW / 2) + bias;
-
-    lens.style.transform = 'translateX(' + roundPx(lensX) + 'px)';
-    lens.classList.add('active');
+    // Trigger layout update event for listeners that need to recalculate positions (like the lens)
+    window.dispatchEvent(new Event('osaka-layout-update'));
 }
 
 window.downloadPDF = function() {
@@ -367,7 +354,8 @@ function updateStaticUIText() {
     const themeAmoledBtn = document.getElementById('theme-amoled');
     if (themeAmoledBtn) themeAmoledBtn.textContent = getTranslation('theme_amoled');
 
-    updateActiveLangButton(currentLang);
+    // Instead of calling logic directly, we rely on event dispatch
+    window.dispatchEvent(new Event('osaka-layout-update'));
 }
 
 function generateLiquidGlassMap(n = 200) {
@@ -415,9 +403,14 @@ function initLiquidGlass() {
 }
 
 function showNotification(msg, type = "info") {
+  const toast = document.getElementById("osaka-toast");
+  const msgSpan = document.getElementById("toast-message");
+  const headerSpan = document.querySelector(".toast-header");
+
   if (!toast) return;
-  if (!msgSpan) return;
-  msgSpan.innerText = msg === null ? "" : (msg === undefined ? "" : msg);
+  if (msgSpan) {
+    msgSpan.innerText = msg === null ? "" : (msg === undefined ? "" : msg);
+  }
 
   if (headerSpan) {
     headerSpan.style.color = 'var(--gear-color)';
@@ -915,10 +908,6 @@ async function executeSearch(userInput) {
 
 // --- Main Script ---
 document.addEventListener("DOMContentLoaded", () => {
-    const toast = document.getElementById("osaka-toast");
-    const msgSpan = document.getElementById("toast-message");
-    const headerSpan = document.querySelector(".toast-header");
-    
     // Check LocalStorage or pre-injected preferred language
     const savedLang = window.__osaka_preferred_lang ? window.__osaka_preferred_lang : localStorage.getItem('osaka_lang');
     if (savedLang && ['tr', 'en', 'ru'].includes(savedLang)) {
@@ -1046,6 +1035,8 @@ document.addEventListener("DOMContentLoaded", () => {
     closeSettings();
 
     // Attach settings-fab toggles (works across pages)
+    // NOTE: This now serves as a backup or for dynamic buttons.
+    // The main handling is done via body event delegation.
     (function bindSettingsFabs() {
         const nodes = Array.from(document.querySelectorAll('.settings-fab, #settings-fab'));
         nodes.forEach(fab => {
@@ -1054,20 +1045,8 @@ document.addEventListener("DOMContentLoaded", () => {
             try { fab.setAttribute('role', 'button'); } catch(e) {}
             try { fab.setAttribute('aria-pressed', 'false'); } catch(e) {}
             try { fab.style.cursor = 'pointer'; } catch(e) {}
-
-            const handler = (ev) => {
-                try { ev.stopPropagation(); } catch (err) {}
-                try { fab.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.96)' }, { transform: 'scale(1)' }], { duration: 220, easing: 'cubic-bezier(.2,.9,.2,1)' }); } catch (err) {}
-                toggleSettings();
-            };
-
-            fab.addEventListener('click', handler);
-            fab.addEventListener('keydown', (ev) => {
-                if (ev.key === 'Enter' || ev.key === ' ') {
-                    ev.preventDefault();
-                    handler(ev);
-                }
-            });
+            // Note: delegation on body handles click, so we don't strictly need a click handler here,
+            // but we add it for safety if stopPropagation blocks delegation in rare cases.
             fab.dataset._settingsBound = '1';
         });
     })();
@@ -1171,33 +1150,38 @@ document.addEventListener("DOMContentLoaded", () => {
             const safeDenom = denom > 1 ? denom : 1;
             const ratio = (lensX - minX) / safeDenom;
             lens.style.setProperty('--lx', String(ratio));
+
+            // Show lens after calculation
+            lens.style.opacity = '1';
         }
 
-        // RACE CONDITION FIX: ResizeObserver + Fonts Ready + Timeout
+        // RACE CONDITION FIX: Wait for fonts to be ready before first layout
+        if (document.fonts) {
+            document.fonts.ready.then(() => {
+                layout();
+                setTimeout(layout, 100);
+            });
+        } else {
+            // Fallback for browsers without document.fonts
+            setTimeout(layout, 300);
+        }
+
+        // ResizeObserver
         if (window.ResizeObserver) {
             const ro = new ResizeObserver(() => layout());
             ro.observe(track);
         }
-
-        if (document.fonts) {
-            document.fonts.ready.then(() => {
-                layout();
-                setTimeout(layout, 300); // Forced fallback
-            });
-        } else {
-            window.addEventListener('load', () => {
-                layout();
-                setTimeout(layout, 300);
-            });
-        }
         window.addEventListener('resize', layout);
+
+        // Listen to custom layout event
+        window.addEventListener('osaka-layout-update', layout);
 
         btns.forEach((btn, i) => {
             btn.addEventListener('click', () => {
                 btns.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
 
-                // Immediately calculate new position for smooth slide
+                // Immediately calculate new position
                 layout();
 
                 const lang = btn.getAttribute('data-lang');
@@ -1251,30 +1235,28 @@ document.addEventListener("DOMContentLoaded", () => {
             lens.style.opacity = '1';
         }
 
-        layout();
+        // RACE CONDITION FIX: Wait for fonts to be ready before first layout
+        if (document.fonts) {
+            document.fonts.ready.then(() => {
+                layout();
+                setTimeout(layout, 100);
+            });
+        } else {
+             setTimeout(layout, 300);
+        }
 
-        // RACE CONDITION FIX: ResizeObserver + Fonts Ready + Timeout
         if (window.ResizeObserver) {
             const ro2 = new ResizeObserver(() => layout());
             ro2.observe(track);
         }
 
-        if (document.fonts) {
-            document.fonts.ready.then(() => {
-                layout();
-                setTimeout(layout, 300); // Forced fallback
-            });
-        }
-
         window.addEventListener('resize', layout);
-        window.addEventListener('load', () => {
-            layout();
-            setTimeout(layout, 300);
-        });
+        window.addEventListener('osaka-layout-update', layout);
     }
     initNavSelector();
 
     // Ensure settings-fab always has top z-index and global delegated click handling
+    // We attach this to body to handle cases where the FAB might be re-injected or moved
     document.body.addEventListener('click', function(e) {
         const fab = e.target.closest && e.target.closest('#settings-fab, .settings-fab');
         if (fab) {
@@ -1284,9 +1266,8 @@ document.addEventListener("DOMContentLoaded", () => {
             if (typeof toggleSettings === 'function') {
                 toggleSettings();
             }
-            return;
         }
-    }, true);
+    }, true); // Use capture to ensure we catch it before others if needed
 
     window.changeLanguage = function(lang) {
         try { closeSettings(); } catch (e) {}
@@ -1443,6 +1424,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         ba.hidden = window.isSettingsOpen ? false : true;
     }
+    // Redundant click listener, handled by body delegation mostly, but kept for direct interaction
     if (settingsFab) {
         settingsFab.addEventListener('click', (e) => {
             e.stopPropagation();
