@@ -222,8 +222,8 @@
 
   .navbar-content {
       width: 100%;
-      /* REQ 1: Drastic Widening */
-      max-width: 1600px;
+      /* REQ 1: Fixed max-width to 1200px */
+      max-width: 1200px;
       margin: 0 auto;
       display: flex;
       justify-content: space-between;
@@ -638,11 +638,10 @@
       cursor: pointer;
       transition: color 0.2s;
       font-size: 0.9rem;
-      padding: 8px 16px; /* Requirement: Adjusted padding */
+      padding: 8px 16px; /* REQ 3: Padding */
       border-radius: 999px;
       will-change: color;
   }
-  /* Requirement: Active language color */
   .lang-track button.active {
       color: var(--accent) !important;
       text-shadow: 0 0 10px rgba(255, 174, 0, 0.4);
@@ -706,16 +705,7 @@
   @media (max-width: 768px) {
     .navbar-size { height: auto; }
     .navbar-content { padding: 12px 18px; gap: 10px; }
-    .nav-track {
-        position: relative;
-        left: auto;
-        transform: none;
-        display: flex;
-        width: 100%;
-        justify-content: center;
-        gap: 18px;
-        min-width: 0;
-    }
+    .nav-track { display: flex; width: 100%; justify-content: center; gap: 18px; min-width: 0; }
     .nav-track a { font-size: 1rem; padding: 12px 18px; }
     .search-box { width: 100%; }
     .search-box input { width: 100%; }
