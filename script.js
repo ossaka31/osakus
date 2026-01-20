@@ -230,21 +230,24 @@ function updateActiveLangButton(lang) {
 
     activeBtn.classList.add('active');
 
-    const rectTrack = track.getBoundingClientRect();
-    const rectBtn = activeBtn.getBoundingClientRect();
-    const h = rectBtn.height;
-    const lensW = min2(rectBtn.width, roundPx(h * 1.3));
+    // Wait for fonts to load before calculating dimensions to prevent "yamuk" look
+    document.fonts.ready.then(() => {
+        const rectTrack = track.getBoundingClientRect();
+        const rectBtn = activeBtn.getBoundingClientRect();
+        const h = rectBtn.height;
+        const lensW = min2(rectBtn.width, roundPx(h * 1.3));
 
-    lens.style.width = lensW + 'px';
-    lens.style.height = h + 'px';
-    lens.style.top = (rectBtn.top - rectTrack.top) + 'px';
+        lens.style.width = lensW + 'px';
+        lens.style.height = h + 'px';
+        lens.style.top = (rectBtn.top - rectTrack.top) + 'px';
 
-    const centerX = (rectBtn.left - rectTrack.left) + rectBtn.width / 2;
-    const bias = -6;
-    const lensX = centerX - (lensW / 2) + bias;
+        const centerX = (rectBtn.left - rectTrack.left) + rectBtn.width / 2;
+        const bias = -6;
+        const lensX = centerX - (lensW / 2) + bias;
 
-    lens.style.transform = 'translateX(' + roundPx(lensX) + 'px)';
-    lens.classList.add('active');
+        lens.style.transform = 'translateX(' + roundPx(lensX) + 'px)';
+        lens.classList.add('active');
+    });
 }
 
 window.downloadPDF = function() {
@@ -1173,22 +1176,24 @@ document.addEventListener("DOMContentLoaded", () => {
             lens.style.setProperty('--lx', String(ratio));
         }
 
-        // RACE CONDITION FIX: ResizeObserver + Fonts Ready + Timeout
-        if (window.ResizeObserver) {
-            const ro = new ResizeObserver(() => layout());
-            ro.observe(track);
-        }
-
+        // RACE CONDITION FIX: Wait for fonts to be ready
         if (document.fonts) {
             document.fonts.ready.then(() => {
                 layout();
-                setTimeout(layout, 300); // Forced fallback
+                // Double check after a short delay to ensure rendering is settled
+                setTimeout(layout, 100);
             });
         } else {
+             // Fallback for browsers not supporting document.fonts
             window.addEventListener('load', () => {
                 layout();
-                setTimeout(layout, 300);
+                setTimeout(layout, 100);
             });
+        }
+
+        if (window.ResizeObserver) {
+            const ro = new ResizeObserver(() => layout());
+            ro.observe(track);
         }
         window.addEventListener('resize', layout);
 
@@ -1251,26 +1256,25 @@ document.addEventListener("DOMContentLoaded", () => {
             lens.style.opacity = '1';
         }
 
-        layout();
+        // RACE CONDITION FIX: Wait for fonts here too
+        if (document.fonts) {
+            document.fonts.ready.then(() => {
+                layout();
+                setTimeout(layout, 100);
+            });
+        } else {
+             window.addEventListener('load', () => {
+                layout();
+                setTimeout(layout, 100);
+             });
+        }
 
-        // RACE CONDITION FIX: ResizeObserver + Fonts Ready + Timeout
         if (window.ResizeObserver) {
             const ro2 = new ResizeObserver(() => layout());
             ro2.observe(track);
         }
 
-        if (document.fonts) {
-            document.fonts.ready.then(() => {
-                layout();
-                setTimeout(layout, 300); // Forced fallback
-            });
-        }
-
         window.addEventListener('resize', layout);
-        window.addEventListener('load', () => {
-            layout();
-            setTimeout(layout, 300);
-        });
     }
     initNavSelector();
 
