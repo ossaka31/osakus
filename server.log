@@ -1,0 +1,6 @@
+127.0.0.1 - - [22/Jan/2026 06:17:43] "GET /valorant.html HTTP/1.1" 200 -
+127.0.0.1 - - [22/Jan/2026 06:17:43] "GET /translations.js HTTP/1.1" 200 -
+127.0.0.1 - - [22/Jan/2026 06:17:43] "GET /script.js HTTP/1.1" 200 -
+127.0.0.1 - - [22/Jan/2026 06:17:44] "GET /assets/glass-displacement.png HTTP/1.1" 200 -
+127.0.0.1 - - [22/Jan/2026 06:17:46] "GET /truckersmp.html HTTP/1.1" 200 -
+127.0.0.1 - - [22/Jan/2026 06:17:46] "GET /truckersmp.js HTTP/1.1" 200 -
