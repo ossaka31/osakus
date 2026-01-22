@@ -222,8 +222,8 @@
 
   .navbar-content {
       width: 100%;
-      /* REQ 1: Drastic Widening */
-      max-width: 1600px;
+      /* REQ 1: Fixed max-width to 1200px */
+      max-width: 1200px;
       margin: 0 auto;
       display: flex;
       justify-content: space-between;
@@ -246,7 +246,8 @@
 
   /* NAV LENS SYSTEM (Standardized) */
   .nav-track {
-    position: absolute; /* Requirement: Absolute Centering */
+    /* REQ 1: Absolute Centering */
+    position: absolute;
     left: 50%;
     transform: translateX(-50%);
     display: inline-flex;
@@ -638,17 +639,17 @@
       cursor: pointer;
       transition: color 0.2s;
       font-size: 0.9rem;
-      padding: 8px 16px; /* Requirement: Adjusted padding */
+      padding: 8px 16px; /* REQ 3: Padding */
       border-radius: 999px;
       will-change: color;
   }
-  /* Requirement: Active language color */
+  .lang-track button.active, .lang-track button:hover {
+      color: var(--accent);
+  }
+  /* REQ 3: Active color & shadow */
   .lang-track button.active {
       color: var(--accent) !important;
       text-shadow: 0 0 10px rgba(255, 174, 0, 0.4);
-  }
-  .lang-track button:hover {
-      color: var(--accent);
   }
   .lang-lens {
       position: absolute;
@@ -734,7 +735,7 @@
 
   @media screen and (max-aspect-ratio: 9/16) {
     .navbar-content { gap: 8px; padding: 10px 16px; }
-    .nav-track { width: 100%; justify-content: center; gap: 5px; }
+    .nav-track { width: 100%; justify-content: center; gap: 5px; position: relative; left: auto; transform: none; }
     .nav-track a { font-size: clamp(11px, 3.8vw, 13px); padding: 6px 12px; }
     main { padding-top: 100px; width: 92%; }
     .stat-card-modern { min-height: 120px; padding: 14px; }
