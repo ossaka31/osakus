@@ -1045,33 +1045,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // Ensure settings panel is closed on initial load
     closeSettings();
 
-    // Attach settings-fab toggles (works across pages)
-    (function bindSettingsFabs() {
-        const nodes = Array.from(document.querySelectorAll('.settings-fab, #settings-fab'));
-        nodes.forEach(fab => {
-            if (!fab) return;
-            if (fab.dataset._settingsBound) return;
-            try { fab.setAttribute('role', 'button'); } catch(e) {}
-            try { fab.setAttribute('aria-pressed', 'false'); } catch(e) {}
-            try { fab.style.cursor = 'pointer'; } catch(e) {}
-
-            const handler = (ev) => {
-                try { ev.stopPropagation(); } catch (err) {}
-                try { fab.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.96)' }, { transform: 'scale(1)' }], { duration: 220, easing: 'cubic-bezier(.2,.9,.2,1)' }); } catch (err) {}
-                toggleSettings();
-            };
-
-            fab.addEventListener('click', handler);
-            fab.addEventListener('keydown', (ev) => {
-                if (ev.key === 'Enter' || ev.key === ' ') {
-                    ev.preventDefault();
-                    handler(ev);
-                }
-            });
-            fab.dataset._settingsBound = '1';
-        });
-    })();
-
     // Close settings on route/hash/popstate
     window.addEventListener('popstate', closeSettings);
     window.addEventListener('hashchange', closeSettings);
@@ -1173,20 +1146,25 @@ document.addEventListener("DOMContentLoaded", () => {
             lens.style.setProperty('--lx', String(ratio));
         }
 
-        // RACE CONDITION FIX: ResizeObserver + Fonts Ready + Timeout
-        if (window.ResizeObserver) {
-            const ro = new ResizeObserver(() => layout());
-            ro.observe(track);
-        }
-
+        // RACE CONDITION FIX: Do not calculate until fonts are ready
         if (document.fonts) {
             document.fonts.ready.then(() => {
                 layout();
-                setTimeout(layout, 300); // Forced fallback
+                // Enable observer only after fonts match
+                if (window.ResizeObserver) {
+                    const ro = new ResizeObserver(() => layout());
+                    ro.observe(track);
+                }
+                setTimeout(layout, 300);
             });
         } else {
+            // Fallback for browsers without document.fonts
             window.addEventListener('load', () => {
                 layout();
+                if (window.ResizeObserver) {
+                    const ro = new ResizeObserver(() => layout());
+                    ro.observe(track);
+                }
                 setTimeout(layout, 300);
             });
         }
@@ -1275,18 +1253,7 @@ document.addEventListener("DOMContentLoaded", () => {
     initNavSelector();
 
     // Ensure settings-fab always has top z-index and global delegated click handling
-    document.body.addEventListener('click', function(e) {
-        const fab = e.target.closest && e.target.closest('#settings-fab, .settings-fab');
-        if (fab) {
-            e.preventDefault();
-            e.stopPropagation();
-            fab.style.setProperty('z-index', '2147483647', 'important');
-            if (typeof toggleSettings === 'function') {
-                toggleSettings();
-            }
-            return;
-        }
-    }, true);
+    // MOVED AFTER toggleSettings DEFINITION TO ENSURE SCOPE SAFETY (though hoisting handles it)
 
     window.changeLanguage = function(lang) {
         try { closeSettings(); } catch (e) {}
@@ -1368,7 +1335,6 @@ document.addEventListener("DOMContentLoaded", () => {
         lastRenderWidth = w;
     });
 
-    const settingsFab = document.getElementById('settings-fab');
     let bottomActions = document.getElementById('bottom-actions');
     function isMobileUI() {
         if (window.innerWidth > 768) return false;
@@ -1443,17 +1409,25 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         ba.hidden = window.isSettingsOpen ? false : true;
     }
-    if (settingsFab) {
-        settingsFab.addEventListener('click', (e) => {
+
+    // Delegated event listener for Settings FAB
+    document.body.addEventListener('click', function(e) {
+        // Check if target is FAB or inside FAB
+        const fab = e.target.closest && e.target.closest('#settings-fab, .settings-fab');
+        if (fab) {
+            e.preventDefault();
             e.stopPropagation();
-            toggleSettings();
-        });
-    }
-    document.addEventListener('click', (e) => {
+            fab.style.setProperty('z-index', '2147483647', 'important');
+            if (typeof toggleSettings === 'function') {
+                toggleSettings();
+            }
+            return;
+        }
+
         if (!window.isSettingsOpen) return;
+
         const t = e.target;
         let inside = false;
-        if (settingsFab && settingsFab.contains(t)) inside = true;
         const panel = document.getElementById('settings-panel');
         if (panel && panel.contains(t)) inside = true;
         const ba = document.getElementById('bottom-actions');
@@ -1461,7 +1435,8 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!inside) {
             closeSettings();
         }
-    });
+    }, true);
+
     syncBottomActions();
     window.addEventListener('resize', () => {
         syncBottomActions();
