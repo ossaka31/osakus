@@ -8,6 +8,13 @@ let lastFaceit = null;
 let accordionState = { cat_general: false, cat_weapons: false, cat_maps: false };
 let isSearching = false;
 
+// --- Helper Functions ---
+function min2(a, b) { return a < b ? a : b; }
+function max2(a, b) { return a > b ? a : b; }
+function absNumber(n) { return n < 0 ? -n : n; }
+function roundPx(n) { const adj = n < 0 ? (n - 0.5) : (n + 0.5); return adj | 0; }
+function clampNumber(v, min, max) { if (v < min) return min; if (v > max) return max; return v; }
+
 function requireFields(obj, fields) {
     for (const f of fields) {
         const v = obj[f];
@@ -19,26 +26,6 @@ function requireFields(obj, fields) {
     return true;
 }
 
-function clampNumber(v, min, max) {
-    if (v < min) return min;
-    if (v > max) return max;
-    return v;
-}
-
-function min2(a, b) {
-    return a < b ? a : b;
-}
-
-function absNumber(n) {
-    return n < 0 ? -n : n;
-}
-
-function roundPx(n) {
-    const adj = n < 0 ? (n - 0.5) : (n + 0.5);
-    return adj | 0;
-}
-
-// --- Helper Functions ---
 function getWeaponName(code) {
     const tr = {
         ak47: "AK-47", m4a1: "M4A1", m4a1_silencer: "M4A1-S", galilar: "Galil AR", famas: "FAMAS",
@@ -101,6 +88,7 @@ function localizeKey(key) {
         return L("Oyun Öğretici", "Game Instructor", "Инструктор игры");
     })();
     if (lessonLabel) return lessonLabel;
+
     const weaponKill = norm.match(/^total_kills_(.+)$/);
     if (weaponKill) {
         const code = weaponKill[1];
@@ -127,7 +115,8 @@ function localizeKey(key) {
                 ar: "Arms Race", monastery: "Monastery", shoots: "Shoots", baggage: "Baggage", enemy: "Düşman",
                 blinded: "Kör", knife: "Bıçak", fight: "Dövüş", zoomed: "Zoomlu", sniper: "Nişancı",
                 pistolround: "Pistol Raundu", donated: "Bağışlanan", weapons: "Silahlar", gun: "Gun",
-                game: "Game", progressive: "Progressive", revenges: "İntikamlar", revenge: "İntikam", against: "Karşı"
+                game: "Game", progressive: "Progressive", revenges: "İntikamlar", revenge: "İntikam", against: "Karşı",
+                mirage: "Mirage", inferno: "Inferno", nuke: "Nuke", overpass: "Overpass", ancient: "Ancient", dust2: "Dust II", anubis: "Anubis"
             };
             const text = code.split('_').map(t => tokenTR[t] ? tokenTR[t] : t.toUpperCase()).join(' ');
             return currentLang === 'tr' ? `${text} Öldürme` : `${text} Kills`;
@@ -171,15 +160,9 @@ function localizeKey(key) {
 
 function getInfoTextForStat(name) {
     const k = String(name).toLowerCase().replace(/\s+/g,'_');
-    if (k === 'total_time_played') {
-        return getTranslation('info_time_active');
-    }
-    if (/^total_wins_map_/.test(k)) {
-        return getTranslation('info_map_wins');
-    }
-    if (/^total_rounds_map_/.test(k)) {
-        return getTranslation('info_map_rounds');
-    }
+    if (k === 'total_time_played') return getTranslation('info_time_active');
+    if (/^total_wins_map_/.test(k)) return getTranslation('info_map_wins');
+    if (/^total_rounds_map_/.test(k)) return getTranslation('info_map_rounds');
     return '';
 }
 
@@ -415,6 +398,10 @@ function initLiquidGlass() {
 }
 
 function showNotification(msg, type = "info") {
+  const toast = document.getElementById("osaka-toast");
+  const msgSpan = document.getElementById("toast-message");
+  const headerSpan = document.querySelector(".toast-header");
+
   if (!toast) return;
   if (!msgSpan) return;
   msgSpan.innerText = msg === null ? "" : (msg === undefined ? "" : msg);
@@ -766,153 +753,6 @@ async function getFaceitStats(steamId) {
   }
 }
 
-// --- Main Render Function ---
-function renderDashboard(statsArray, profileData) {
-    const grid = document.getElementById('dashboard-grid');
-    grid.innerHTML = ''; // Clear grid
-
-    // 1. Update Profile Header
-    const profileSection = document.getElementById('profile-section');
-    const nameEl = document.getElementById('profile-name');
-    const statusEl = document.getElementById('profile-status');
-    const avatarImg = document.getElementById('profile-avatar');
-    const profileIcon = document.getElementById('profile-icon');
-    const insightBox = document.getElementById('gamer-insight');
-    const insightContent = document.getElementById('insight-content');
-    const pdfBtnContainer = document.getElementById('pdf-container');
-    const welcomeCard = document.getElementById('welcome-card');
-
-    profileSection.style.display = 'flex';
-    const tmpContainer = document.getElementById('truckersmp-container');
-    if (tmpContainer) {
-         tmpContainer.style.display = 'block';
-         // Reset previous results
-         const res = document.getElementById('truckersmp-result');
-         if(res) res.innerHTML = '';
-    }
-    if (insightBox) insightBox.style.display = 'none';
-    if (pdfBtnContainer) pdfBtnContainer.style.display = 'flex';
-    if (welcomeCard) welcomeCard.style.display = 'none';
-
-    if (profileData && requireFields(profileData, ['personaname'])) {
-        nameEl.textContent = profileData.personaname;
-        avatarImg.src = profileData.avatarfull === undefined ? "" : profileData.avatarfull;
-        avatarImg.style.display = "block";
-        if (profileIcon) profileIcon.style.display = "none";
-        statusEl.textContent = getTranslation('osaka_verified');
-        statusEl.style.color = "#00ff00";
-    } else {
-        profileSection.style.display = 'none';
-    }
-
-    if (!statsArray) {
-        grid.innerHTML = `<p style="text-align:center; width:100%; color:#aaa;">${getTranslation('data_waiting')}</p>`;
-        return;
-    }
-    if (insightContent) insightContent.innerHTML = "";
-
-    const totalKillsStat = statsArray.find(s => s.name === 'total_kills');
-    const totalWinsStat = statsArray.find(s => s.name === 'total_matches_won');
-    const priority = [];
-    if (totalKillsStat && typeof totalKillsStat.value === 'number') priority.push({ name: 'total_kills', value: totalKillsStat.value, icon: '💀' });
-    if (totalWinsStat && typeof totalWinsStat.value === 'number') priority.push({ name: 'total_matches_won', value: totalWinsStat.value, icon: '🏆' });
-    if (priority.length === 0) {
-        const msg = document.createElement('div');
-        msg.className = 'stat-unavailable';
-        msg.textContent = 'Bu veri API tarafından sağlanmıyor.';
-        grid.appendChild(msg);
-        return;
-    }
-    priority.forEach(p => {
-        const card = createStatCard(p.name, formatNumber(p.value), p.icon);
-        if (card) grid.appendChild(card);
-    });
-
-    renderHighlights(statsArray);
-
-    // 4. Render All Other Stats
-    statsArray.forEach(stat => {
-        // Skip duplicates of priority stats if desired
-        if (stat.name === 'total_kills') return;
-        if (stat.name === 'total_matches_won') return;
-        if (!requireFields(stat, ['name', 'value'])) return;
-        if (typeof stat.value !== 'number') return;
-
-        const finalValue = formatNumber(stat.value);
-        const card = createStatCard(stat.name, finalValue, "📊");
-        if (!card) return;
-        grid.appendChild(card);
-    });
-
-    // Mobile accordion override
-    if (window.innerWidth <= 768) {
-        renderMobileAccordion(statsArray);
-    }
-}
-
-async function executeSearch(userInput) {
-    showSkeletons(8);
-    try {
-      const response = await fetch(`/api?provider=steam&q=${encodeURIComponent(userInput)}`);
-
-      if (!response.ok) {
-          let errorMsg = currentLang === 'tr' ? 'Veri alınamadı.' : (currentLang === 'ru' ? 'Данные недоступны.' : 'Data unavailable.');
-          try { await response.json(); } catch (e) {}
-
-          showNotification(errorMsg, "error");
-          const gridEl = document.getElementById('dashboard-grid');
-          if (gridEl) {
-            const p = document.createElement('p');
-            p.style.textAlign = 'center';
-            p.style.color = '#ff4444';
-            p.textContent = errorMsg.toString();
-            gridEl.innerHTML = '';
-            gridEl.appendChild(p);
-          }
-          return;
-      }
-
-      const data = await response.json();
-
-      if (data && data.error) {
-        const msg = currentLang === 'tr' ? 'Veri alınamadı.' : (currentLang === 'ru' ? 'Данные недоступны.' : 'Data unavailable.');
-        showNotification(msg, "error");
-        const gridEl = document.getElementById('dashboard-grid');
-        if (gridEl) {
-          const p = document.createElement('p');
-          p.style.textAlign = 'center';
-          p.style.color = '#ff4444';
-          p.textContent = msg;
-          gridEl.innerHTML = '';
-          gridEl.appendChild(p);
-        }
-      } else {
-        let statsArray = [];
-        if (Array.isArray(data.stats)) {
-            statsArray = data.stats;
-        } else {
-            statsArray = null;
-        }
-        lastStats = statsArray;
-        lastProfile = data.profile;
-        lastFaceit = null;
-        renderDashboard(statsArray, data.profile);
-        showNotification(getTranslation('success'), "info");
-        try {
-            localStorage.setItem('last_query', String(userInput));
-        } catch (e) {}
-        if (data.profile && data.profile.steamid) {
-            getFaceitStats(data.profile.steamid);
-        }
-      }
-    } catch (error) {
-      showNotification(currentLang === 'tr' ? 'Veri alınamadı.' : (currentLang === 'ru' ? 'Данные недоступны.' : 'Data unavailable.'), "error");
-    } finally {
-      clearSkeletons();
-      isSearching = false;
-    }
-}
-
 // --- Main Script ---
 document.addEventListener("DOMContentLoaded", () => {
     const toast = document.getElementById("osaka-toast");
@@ -1045,33 +885,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // Ensure settings panel is closed on initial load
     closeSettings();
 
-    // Attach settings-fab toggles (works across pages)
-    (function bindSettingsFabs() {
-        const nodes = Array.from(document.querySelectorAll('.settings-fab, #settings-fab'));
-        nodes.forEach(fab => {
-            if (!fab) return;
-            if (fab.dataset._settingsBound) return;
-            try { fab.setAttribute('role', 'button'); } catch(e) {}
-            try { fab.setAttribute('aria-pressed', 'false'); } catch(e) {}
-            try { fab.style.cursor = 'pointer'; } catch(e) {}
-
-            const handler = (ev) => {
-                try { ev.stopPropagation(); } catch (err) {}
-                try { fab.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.96)' }, { transform: 'scale(1)' }], { duration: 220, easing: 'cubic-bezier(.2,.9,.2,1)' }); } catch (err) {}
-                toggleSettings();
-            };
-
-            fab.addEventListener('click', handler);
-            fab.addEventListener('keydown', (ev) => {
-                if (ev.key === 'Enter' || ev.key === ' ') {
-                    ev.preventDefault();
-                    handler(ev);
-                }
-            });
-            fab.dataset._settingsBound = '1';
-        });
-    })();
-
     // Close settings on route/hash/popstate
     window.addEventListener('popstate', closeSettings);
     window.addEventListener('hashchange', closeSettings);
@@ -1174,23 +987,29 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         // RACE CONDITION FIX: ResizeObserver + Fonts Ready + Timeout
-        if (window.ResizeObserver) {
-            const ro = new ResizeObserver(() => layout());
-            ro.observe(track);
-        }
-
+        // Ensure we wait for fonts before attaching live observers to prevent "yamuk" layout
         if (document.fonts) {
             document.fonts.ready.then(() => {
                 layout();
+                if (window.ResizeObserver) {
+                    const ro = new ResizeObserver(() => layout());
+                    ro.observe(track);
+                }
+                window.addEventListener('resize', layout);
                 setTimeout(layout, 300); // Forced fallback
             });
         } else {
+            // Fallback for browsers without document.fonts
             window.addEventListener('load', () => {
                 layout();
+                if (window.ResizeObserver) {
+                    const ro = new ResizeObserver(() => layout());
+                    ro.observe(track);
+                }
+                window.addEventListener('resize', layout);
                 setTimeout(layout, 300);
             });
         }
-        window.addEventListener('resize', layout);
 
         btns.forEach((btn, i) => {
             btn.addEventListener('click', () => {
@@ -1275,16 +1094,33 @@ document.addEventListener("DOMContentLoaded", () => {
     initNavSelector();
 
     // Ensure settings-fab always has top z-index and global delegated click handling
+    // DELEGATION FIX: Replaced individual bindings with global delegation
     document.body.addEventListener('click', function(e) {
+        // Handle settings fab click
         const fab = e.target.closest && e.target.closest('#settings-fab, .settings-fab');
         if (fab) {
             e.preventDefault();
             e.stopPropagation();
-            fab.style.setProperty('z-index', '2147483647', 'important');
+            // Animate
+            try { fab.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.96)' }, { transform: 'scale(1)' }], { duration: 220, easing: 'cubic-bezier(.2,.9,.2,1)' }); } catch (err) {}
             if (typeof toggleSettings === 'function') {
                 toggleSettings();
             }
             return;
+        }
+
+        // Handle clicking outside settings panel
+        if (window.isSettingsOpen) {
+            const t = e.target;
+            let inside = false;
+            const panel = document.getElementById('settings-panel');
+            if (panel && panel.contains(t)) inside = true;
+            const ba = document.getElementById('bottom-actions');
+            if (ba && ba.contains(t)) inside = true;
+
+            if (!inside) {
+                closeSettings();
+            }
         }
     }, true);
 
@@ -1443,25 +1279,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         ba.hidden = window.isSettingsOpen ? false : true;
     }
-    if (settingsFab) {
-        settingsFab.addEventListener('click', (e) => {
-            e.stopPropagation();
-            toggleSettings();
-        });
-    }
-    document.addEventListener('click', (e) => {
-        if (!window.isSettingsOpen) return;
-        const t = e.target;
-        let inside = false;
-        if (settingsFab && settingsFab.contains(t)) inside = true;
-        const panel = document.getElementById('settings-panel');
-        if (panel && panel.contains(t)) inside = true;
-        const ba = document.getElementById('bottom-actions');
-        if (!inside && ba && ba.contains(t)) inside = true;
-        if (!inside) {
-            closeSettings();
-        }
-    });
+
     syncBottomActions();
     window.addEventListener('resize', () => {
         syncBottomActions();
