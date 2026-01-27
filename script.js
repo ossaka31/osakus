@@ -1173,22 +1173,24 @@ document.addEventListener("DOMContentLoaded", () => {
             lens.style.setProperty('--lx', String(ratio));
         }
 
-        // RACE CONDITION FIX: ResizeObserver + Fonts Ready + Timeout
-        if (window.ResizeObserver) {
-            const ro = new ResizeObserver(() => layout());
-            ro.observe(track);
-        }
-
+        // RACE CONDITION FIX: Wait for fonts, then layout
         if (document.fonts) {
             document.fonts.ready.then(() => {
                 layout();
-                setTimeout(layout, 300); // Forced fallback
+                // Double check after a short delay to ensure rendering is settled
+                setTimeout(layout, 100);
             });
         } else {
+            // Fallback for browsers without document.fonts
             window.addEventListener('load', () => {
                 layout();
-                setTimeout(layout, 300);
+                setTimeout(layout, 100);
             });
+        }
+
+        if (window.ResizeObserver) {
+            const ro = new ResizeObserver(() => layout());
+            ro.observe(track);
         }
         window.addEventListener('resize', layout);
 
@@ -1251,7 +1253,18 @@ document.addEventListener("DOMContentLoaded", () => {
             lens.style.opacity = '1';
         }
 
-        layout();
+        // Defer layout until fonts are ready
+        if (document.fonts) {
+            document.fonts.ready.then(() => {
+                layout();
+                setTimeout(layout, 100);
+            });
+        } else {
+             window.addEventListener('load', () => {
+                layout();
+                setTimeout(layout, 100);
+            });
+        }
 
         // RACE CONDITION FIX: ResizeObserver + Fonts Ready + Timeout
         if (window.ResizeObserver) {
@@ -1259,18 +1272,7 @@ document.addEventListener("DOMContentLoaded", () => {
             ro2.observe(track);
         }
 
-        if (document.fonts) {
-            document.fonts.ready.then(() => {
-                layout();
-                setTimeout(layout, 300); // Forced fallback
-            });
-        }
-
         window.addEventListener('resize', layout);
-        window.addEventListener('load', () => {
-            layout();
-            setTimeout(layout, 300);
-        });
     }
     initNavSelector();
 
