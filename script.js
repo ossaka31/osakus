@@ -1045,32 +1045,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Ensure settings panel is closed on initial load
     closeSettings();
 
-    // Attach settings-fab toggles (works across pages)
-    (function bindSettingsFabs() {
-        const nodes = Array.from(document.querySelectorAll('.settings-fab, #settings-fab'));
-        nodes.forEach(fab => {
-            if (!fab) return;
-            if (fab.dataset._settingsBound) return;
-            try { fab.setAttribute('role', 'button'); } catch(e) {}
-            try { fab.setAttribute('aria-pressed', 'false'); } catch(e) {}
-            try { fab.style.cursor = 'pointer'; } catch(e) {}
-
-            const handler = (ev) => {
-                try { ev.stopPropagation(); } catch (err) {}
-                try { fab.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.96)' }, { transform: 'scale(1)' }], { duration: 220, easing: 'cubic-bezier(.2,.9,.2,1)' }); } catch (err) {}
-                toggleSettings();
-            };
-
-            fab.addEventListener('click', handler);
-            fab.addEventListener('keydown', (ev) => {
-                if (ev.key === 'Enter' || ev.key === ' ') {
-                    ev.preventDefault();
-                    handler(ev);
-                }
-            });
-            fab.dataset._settingsBound = '1';
-        });
-    })();
+    // [REMOVED] bindSettingsFabs - using delegation instead
 
     // Close settings on route/hash/popstate
     window.addEventListener('popstate', closeSettings);
@@ -1173,24 +1148,27 @@ document.addEventListener("DOMContentLoaded", () => {
             lens.style.setProperty('--lx', String(ratio));
         }
 
-        // RACE CONDITION FIX: ResizeObserver + Fonts Ready + Timeout
-        if (window.ResizeObserver) {
-            const ro = new ResizeObserver(() => layout());
-            ro.observe(track);
-        }
+        // REQ 3: Race Condition Fix - Strictly wait for fonts
+        const runInit = () => {
+            layout();
+            if (window.ResizeObserver) {
+                const ro = new ResizeObserver(() => layout());
+                ro.observe(track);
+            }
+            window.addEventListener('resize', layout);
+        };
 
         if (document.fonts) {
             document.fonts.ready.then(() => {
-                layout();
-                setTimeout(layout, 300); // Forced fallback
+                runInit();
+                setTimeout(layout, 100);
             });
         } else {
             window.addEventListener('load', () => {
-                layout();
+                runInit();
                 setTimeout(layout, 300);
             });
         }
-        window.addEventListener('resize', layout);
 
         btns.forEach((btn, i) => {
             btn.addEventListener('click', () => {
@@ -1274,19 +1252,27 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     initNavSelector();
 
-    // Ensure settings-fab always has top z-index and global delegated click handling
+    // SETTINGS FAB DELEGATION (Requirement: Event Delegation)
     document.body.addEventListener('click', function(e) {
-        const fab = e.target.closest && e.target.closest('#settings-fab, .settings-fab');
+        const fab = e.target.closest('#settings-fab') || e.target.closest('.settings-fab');
         if (fab) {
             e.preventDefault();
             e.stopPropagation();
-            fab.style.setProperty('z-index', '2147483647', 'important');
+
+            // Animation
+            try {
+                fab.animate([
+                    { transform: 'scale(1)' },
+                    { transform: 'scale(0.96)' },
+                    { transform: 'scale(1)' }
+                ], { duration: 220, easing: 'cubic-bezier(.2,.9,.2,1)' });
+            } catch (err) {}
+
             if (typeof toggleSettings === 'function') {
                 toggleSettings();
             }
-            return;
         }
-    }, true);
+    });
 
     window.changeLanguage = function(lang) {
         try { closeSettings(); } catch (e) {}
@@ -1443,12 +1429,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         ba.hidden = window.isSettingsOpen ? false : true;
     }
-    if (settingsFab) {
-        settingsFab.addEventListener('click', (e) => {
-            e.stopPropagation();
-            toggleSettings();
-        });
-    }
+    // [REMOVED] Direct listener on settingsFab - using delegation
     document.addEventListener('click', (e) => {
         if (!window.isSettingsOpen) return;
         const t = e.target;
