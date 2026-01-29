@@ -1179,17 +1179,21 @@ document.addEventListener("DOMContentLoaded", () => {
             ro.observe(track);
         }
 
+        // Strict requirement: Wait for fonts to be ready before initial layout
         if (document.fonts) {
             document.fonts.ready.then(() => {
                 layout();
-                setTimeout(layout, 300); // Forced fallback
+                // Double check after a short delay to handle potential race conditions
+                setTimeout(layout, 100);
             });
         } else {
+            // Fallback for browsers without document.fonts
             window.addEventListener('load', () => {
                 layout();
                 setTimeout(layout, 300);
             });
         }
+
         window.addEventListener('resize', layout);
 
         btns.forEach((btn, i) => {
@@ -1281,6 +1285,7 @@ document.addEventListener("DOMContentLoaded", () => {
             e.preventDefault();
             e.stopPropagation();
             fab.style.setProperty('z-index', '2147483647', 'important');
+            fab.style.setProperty('pointer-events', 'auto', 'important');
             if (typeof toggleSettings === 'function') {
                 toggleSettings();
             }
