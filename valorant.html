@@ -223,7 +223,7 @@
   .navbar-content {
       width: 100%;
       /* REQ 1: Drastic Widening */
-      max-width: 1600px;
+      max-width: 1200px;
       margin: 0 auto;
       display: flex;
       justify-content: space-between;
@@ -642,7 +642,11 @@
       border-radius: 999px;
       will-change: color;
   }
-  .lang-track button.active, .lang-track button:hover {
+  .lang-track button.active {
+      color: var(--accent) !important;
+      text-shadow: 0 0 10px rgba(255, 174, 0, 0.4);
+  }
+  .lang-track button:hover {
       color: var(--accent);
   }
   .lang-lens {
