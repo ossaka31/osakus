@@ -230,21 +230,15 @@ function updateActiveLangButton(lang) {
 
     activeBtn.classList.add('active');
 
-    const rectTrack = track.getBoundingClientRect();
-    const rectBtn = activeBtn.getBoundingClientRect();
-    const h = rectBtn.height;
-    const lensW = min2(rectBtn.width, roundPx(h * 1.3));
-
-    lens.style.width = lensW + 'px';
-    lens.style.height = h + 'px';
-    lens.style.top = (rectBtn.top - rectTrack.top) + 'px';
-
-    const centerX = (rectBtn.left - rectTrack.left) + rectBtn.width / 2;
-    const bias = -6;
-    const lensX = centerX - (lensW / 2) + bias;
-
-    lens.style.transform = 'translateX(' + roundPx(lensX) + 'px)';
-    lens.classList.add('active');
+    // Defer measuring until font is confirmed ready is handled in initLangSelector,
+    // but here we just set the class. The ResizeObserver/layout logic should pick it up.
+    // However, if we manually trigger a layout update here it's safer.
+    // We can dispatch a custom event or call a global layout updater if exposed.
+    // For now, we rely on the logic inside initLangSelector's layout function which
+    // is triggered by ResizeObserver or window resize.
+    // To be safe, we can try to find the layout function but it's scoped.
+    // Best is to trigger a window resize event to force recalculation.
+    window.dispatchEvent(new Event('resize'));
 }
 
 window.downloadPDF = function() {
@@ -1130,6 +1124,9 @@ document.addEventListener("DOMContentLoaded", () => {
         let maxX = 0;
 
         function layout() {
+            // Safety check: if fonts aren't ready and we aren't in a fallback state, we might get skew
+            // But this function is triggered by observers/events.
+
             const rectTrack = track.getBoundingClientRect();
             centers = btns.map(b => {
                 const r = b.getBoundingClientRect();
@@ -1173,25 +1170,7 @@ document.addEventListener("DOMContentLoaded", () => {
             lens.style.setProperty('--lx', String(ratio));
         }
 
-        // RACE CONDITION FIX: ResizeObserver + Fonts Ready + Timeout
-        if (window.ResizeObserver) {
-            const ro = new ResizeObserver(() => layout());
-            ro.observe(track);
-        }
-
-        if (document.fonts) {
-            document.fonts.ready.then(() => {
-                layout();
-                setTimeout(layout, 300); // Forced fallback
-            });
-        } else {
-            window.addEventListener('load', () => {
-                layout();
-                setTimeout(layout, 300);
-            });
-        }
-        window.addEventListener('resize', layout);
-
+        // --- BUTTON CLICKS (Always active) ---
         btns.forEach((btn, i) => {
             btn.addEventListener('click', () => {
                 btns.forEach(b => b.classList.remove('active'));
@@ -1204,6 +1183,34 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (lang) changeLanguage(lang);
             });
         });
+
+        // --- DEFERRED INITIALIZATION FOR DIMENSIONS ---
+        // Requirement: Do NOT calculate dimensions until document.fonts.ready is resolved.
+
+        if (document.fonts) {
+            document.fonts.ready.then(() => {
+                // Now it's safe to layout and start observing
+                layout();
+
+                // Start ResizeObserver ONLY after fonts are ready
+                if (window.ResizeObserver) {
+                    const ro = new ResizeObserver(() => layout());
+                    ro.observe(track);
+                }
+
+                window.addEventListener('resize', layout);
+            });
+        } else {
+            // Fallback for browsers without document.fonts API
+            window.addEventListener('load', () => {
+                layout();
+                if (window.ResizeObserver) {
+                    const ro = new ResizeObserver(() => layout());
+                    ro.observe(track);
+                }
+                window.addEventListener('resize', layout);
+            });
+        }
     }
     initLangSelector();
 
