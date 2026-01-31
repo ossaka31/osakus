@@ -222,8 +222,8 @@
 
   .navbar-content {
       width: 100%;
-      /* REQ 1: Drastic Widening */
-      max-width: 1600px;
+      /* REQ 1: Drastic Widening - FIXED to 1200px */
+      max-width: 1200px;
       margin: 0 auto;
       display: flex;
       justify-content: space-between;
@@ -464,7 +464,7 @@
   body.gpu-on .liquid-glass { will-change: transform, filter; transform: translateZ(0); backface-visibility: hidden; }
   
   /* --- SETTINGS FAB --- */
-  .settings-fab {
+  .settings-fab, #settings-fab {
     position: fixed;
     bottom: 20px;
     left: 18px;
@@ -638,11 +638,17 @@
       cursor: pointer;
       transition: color 0.2s;
       font-size: 0.9rem;
+      /* REQ: Padding Adjust */
       padding: 8px 16px;
       border-radius: 999px;
       will-change: color;
   }
-  .lang-track button.active, .lang-track button:hover {
+  /* REQ: Active Language Color */
+  .lang-track button.active {
+      color: var(--accent) !important;
+      text-shadow: 0 0 10px rgba(255, 174, 0, 0.4);
+  }
+  .lang-track button:hover {
       color: var(--accent);
   }
   .lang-lens {
