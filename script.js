@@ -230,21 +230,8 @@ function updateActiveLangButton(lang) {
 
     activeBtn.classList.add('active');
 
-    const rectTrack = track.getBoundingClientRect();
-    const rectBtn = activeBtn.getBoundingClientRect();
-    const h = rectBtn.height;
-    const lensW = min2(rectBtn.width, roundPx(h * 1.3));
-
-    lens.style.width = lensW + 'px';
-    lens.style.height = h + 'px';
-    lens.style.top = (rectBtn.top - rectTrack.top) + 'px';
-
-    const centerX = (rectBtn.left - rectTrack.left) + rectBtn.width / 2;
-    const bias = -6;
-    const lensX = centerX - (lensW / 2) + bias;
-
-    lens.style.transform = 'translateX(' + roundPx(lensX) + 'px)';
-    lens.classList.add('active');
+    // Logic moved to initLangSelector to use fontsLoaded check
+    // Here we just set active class
 }
 
 window.downloadPDF = function() {
@@ -415,6 +402,10 @@ function initLiquidGlass() {
 }
 
 function showNotification(msg, type = "info") {
+  const toast = document.getElementById("osaka-toast");
+  const msgSpan = document.getElementById("toast-message");
+  const headerSpan = document.querySelector(".toast-header");
+
   if (!toast) return;
   if (!msgSpan) return;
   msgSpan.innerText = msg === null ? "" : (msg === undefined ? "" : msg);
@@ -915,19 +906,13 @@ async function executeSearch(userInput) {
 
 // --- Main Script ---
 document.addEventListener("DOMContentLoaded", () => {
-    const toast = document.getElementById("osaka-toast");
-    const msgSpan = document.getElementById("toast-message");
-    const headerSpan = document.querySelector(".toast-header");
-    
-    // Check LocalStorage or pre-injected preferred language
+    // Initial UI Update for default/saved Lang
     const savedLang = window.__osaka_preferred_lang ? window.__osaka_preferred_lang : localStorage.getItem('osaka_lang');
     if (savedLang && ['tr', 'en', 'ru'].includes(savedLang)) {
         currentLang = savedLang;
     }
-
-    // Initial UI Update for default/saved Lang
     updateStaticUIText();
-    updateActiveLangButton(currentLang);
+    // Note: updateActiveLangButton is called inside updateStaticUIText but depends on initLangSelector logic too
     initLiquidGlass();
     let lastRenderWidth = window.innerWidth;
 
@@ -1128,8 +1113,11 @@ document.addEventListener("DOMContentLoaded", () => {
         let stableLensWidth = 0;
         let minX = 0;
         let maxX = 0;
+        let fontsLoaded = false; // REQ: Flag to prevent premature calculation
 
         function layout() {
+            if (!fontsLoaded) return; // REQ: Race condition fix
+
             const rectTrack = track.getBoundingClientRect();
             centers = btns.map(b => {
                 const r = b.getBoundingClientRect();
@@ -1175,17 +1163,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // RACE CONDITION FIX: ResizeObserver + Fonts Ready + Timeout
         if (window.ResizeObserver) {
-            const ro = new ResizeObserver(() => layout());
+            const ro = new ResizeObserver(() => {
+                if (fontsLoaded) layout();
+            });
             ro.observe(track);
         }
 
         if (document.fonts) {
             document.fonts.ready.then(() => {
+                fontsLoaded = true; // Set flag
                 layout();
                 setTimeout(layout, 300); // Forced fallback
             });
         } else {
             window.addEventListener('load', () => {
+                fontsLoaded = true;
                 layout();
                 setTimeout(layout, 300);
             });
@@ -1197,13 +1189,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 btns.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
 
-                // Immediately calculate new position for smooth slide
-                layout();
+                // Immediately calculate new position for smooth slide if fonts are ready
+                if (fontsLoaded) layout();
 
                 const lang = btn.getAttribute('data-lang');
                 if (lang) changeLanguage(lang);
             });
         });
+
+        // Initial layout if already active
+        updateActiveLangButton(currentLang);
     }
     initLangSelector();
 
@@ -1217,8 +1212,11 @@ document.addEventListener("DOMContentLoaded", () => {
         const bias = 0;
         let centers = [];
         let stableNavLensWidth = 0;
+        let fontsLoaded = false;
 
         function layout() {
+            if (!fontsLoaded) return;
+
             const rectTrack = track.getBoundingClientRect();
             centers = links.map(a => {
                 const r = a.getBoundingClientRect();
@@ -1234,6 +1232,7 @@ document.addEventListener("DOMContentLoaded", () => {
             links.forEach(l => l.classList.remove('active'));
             active.classList.add('active');
             const idx = links.indexOf(active);
+            if (idx === -1) return;
             const c = centers[idx];
             const r = active.getBoundingClientRect();
             const h = r.height;
@@ -1251,26 +1250,29 @@ document.addEventListener("DOMContentLoaded", () => {
             lens.style.opacity = '1';
         }
 
-        layout();
-
         // RACE CONDITION FIX: ResizeObserver + Fonts Ready + Timeout
         if (window.ResizeObserver) {
-            const ro2 = new ResizeObserver(() => layout());
+            const ro2 = new ResizeObserver(() => {
+                if (fontsLoaded) layout();
+            });
             ro2.observe(track);
         }
 
         if (document.fonts) {
             document.fonts.ready.then(() => {
+                fontsLoaded = true;
                 layout();
                 setTimeout(layout, 300); // Forced fallback
+            });
+        } else {
+             window.addEventListener('load', () => {
+                fontsLoaded = true;
+                layout();
+                setTimeout(layout, 300);
             });
         }
 
         window.addEventListener('resize', layout);
-        window.addEventListener('load', () => {
-            layout();
-            setTimeout(layout, 300);
-        });
     }
     initNavSelector();
 
@@ -1280,6 +1282,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (fab) {
             e.preventDefault();
             e.stopPropagation();
+            // REQ 2: Z-Index Nuke
             fab.style.setProperty('z-index', '2147483647', 'important');
             if (typeof toggleSettings === 'function') {
                 toggleSettings();
