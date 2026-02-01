@@ -1045,33 +1045,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // Ensure settings panel is closed on initial load
     closeSettings();
 
-    // Attach settings-fab toggles (works across pages)
-    (function bindSettingsFabs() {
-        const nodes = Array.from(document.querySelectorAll('.settings-fab, #settings-fab'));
-        nodes.forEach(fab => {
-            if (!fab) return;
-            if (fab.dataset._settingsBound) return;
-            try { fab.setAttribute('role', 'button'); } catch(e) {}
-            try { fab.setAttribute('aria-pressed', 'false'); } catch(e) {}
-            try { fab.style.cursor = 'pointer'; } catch(e) {}
-
-            const handler = (ev) => {
-                try { ev.stopPropagation(); } catch (err) {}
-                try { fab.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.96)' }, { transform: 'scale(1)' }], { duration: 220, easing: 'cubic-bezier(.2,.9,.2,1)' }); } catch (err) {}
-                toggleSettings();
-            };
-
-            fab.addEventListener('click', handler);
-            fab.addEventListener('keydown', (ev) => {
-                if (ev.key === 'Enter' || ev.key === ' ') {
-                    ev.preventDefault();
-                    handler(ev);
-                }
-            });
-            fab.dataset._settingsBound = '1';
-        });
-    })();
-
     // Close settings on route/hash/popstate
     window.addEventListener('popstate', closeSettings);
     window.addEventListener('hashchange', closeSettings);
@@ -1174,20 +1147,23 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         // RACE CONDITION FIX: ResizeObserver + Fonts Ready + Timeout
-        if (window.ResizeObserver) {
-            const ro = new ResizeObserver(() => layout());
-            ro.observe(track);
-        }
+        const startObserver = () => {
+             layout();
+             if (window.ResizeObserver) {
+                const ro = new ResizeObserver(() => layout());
+                ro.observe(track);
+             }
+        };
 
         if (document.fonts) {
             document.fonts.ready.then(() => {
-                layout();
-                setTimeout(layout, 300); // Forced fallback
+                startObserver();
+                setTimeout(layout, 500); // Backup timeout
             });
         } else {
+            // Fallback for browsers without document.fonts
             window.addEventListener('load', () => {
-                layout();
-                setTimeout(layout, 300);
+                startObserver();
             });
         }
         window.addEventListener('resize', layout);
@@ -1443,12 +1419,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         ba.hidden = window.isSettingsOpen ? false : true;
     }
-    if (settingsFab) {
-        settingsFab.addEventListener('click', (e) => {
-            e.stopPropagation();
-            toggleSettings();
-        });
-    }
+    // REMOVED DUPLICATE LISTENER
     document.addEventListener('click', (e) => {
         if (!window.isSettingsOpen) return;
         const t = e.target;
