@@ -51,7 +51,7 @@
       background: rgba(0,0,0,0.05) !important;
       border: none !important;
   }
-  body.theme-light .lang-track button.active, body.theme-light .lang-track button:hover {
+  body.theme-light .lang-track button:hover {
     color: var(--accent);
   }
   body.theme-light .lang-lens {
@@ -222,8 +222,8 @@
 
   .navbar-content {
       width: 100%;
-      /* REQ 1: Drastic Widening */
-      max-width: 1600px;
+      /* REQ 1: Drastic Widening (CORRECTED to 1200px) */
+      max-width: 1200px;
       margin: 0 auto;
       display: flex;
       justify-content: space-between;
@@ -642,7 +642,12 @@
       border-radius: 999px;
       will-change: color;
   }
-  .lang-track button.active, .lang-track button:hover {
+  /* Requirement: Active language color */
+  .lang-track button.active {
+      color: var(--accent) !important;
+      text-shadow: 0 0 10px rgba(255, 174, 0, 0.4);
+  }
+  .lang-track button:hover {
       color: var(--accent);
   }
   .lang-lens {
