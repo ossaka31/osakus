@@ -222,7 +222,7 @@
 
   .navbar-content {
       width: 100%;
-      /* REQ 1: Drastic Widening adjusted to 1200px as requested */
+      /* REQ 1: Standardized Max Width */
       max-width: 1200px;
       margin: 0 auto;
       display: flex;
@@ -853,6 +853,22 @@
     <div id="dashboard-grid"></div>
 
 </main>
+
+<div class="settings-panel liquid-glass">
+    <div class="settings-row">
+        <div class="label">Donanım Hızlandırma</div>
+        <button id="gpu-toggle" class="toggle-btn">Kapalı</button>
+    </div>
+    <div class="settings-row">
+        <div class="label">Tema</div>
+        <div class="theme-segment">
+            <button class="theme-btn active" data-theme="system">Sistem</button>
+            <button class="theme-btn" data-theme="light">Açık</button>
+            <button class="theme-btn" data-theme="dark">Koyu</button>
+            <button class="theme-btn" data-theme="amoled">Amoled</button>
+        </div>
+    </div>
+</div>
 
 <footer id="main-footer">
     Grand OSAKA tarafından hazırlanmıştır.
