@@ -222,7 +222,7 @@
 
   .navbar-content {
       width: 100%;
-      /* REQ 1: Drastic Widening adjusted to 1200px as requested */
+      /* REQ 1: Max width 1200px and centering */
       max-width: 1200px;
       margin: 0 auto;
       display: flex;
@@ -852,6 +852,13 @@
                          <h3 id="profile-name" style="margin: 0;">Kullanıcı</h3>
                          <p id="profile-id" style="margin:5px 0 0 0; font-size:0.9rem; opacity:0.8; color: #aaa;">ID: -</p>
                      </div>
+                </div>
+
+                 <div id="truckersmp-container" style="margin-top: 15px; width: 100%; display:none;">
+                    <button id="btn-truckersmp" style="width:100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: white; cursor: pointer; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                       <i class="fas fa-truck"></i> TruckersMP Kontrol Et
+                    </button>
+                    <div id="truckersmp-result"></div>
                 </div>
             </div>
         </div>
