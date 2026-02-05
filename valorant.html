@@ -222,8 +222,8 @@
 
   .navbar-content {
       width: 100%;
-      /* REQ 1: Drastic Widening adjusted to 1200px as requested */
-      max-width: 1200px;
+      /* REQ 1: Navbar Standardization (max-width 1200px) */
+      max-width: 1200px !important;
       margin: 0 auto;
       display: flex;
       justify-content: space-between;
@@ -246,7 +246,8 @@
 
   /* NAV LENS SYSTEM (Standardized) */
   .nav-track {
-    position: absolute; /* Requirement: Absolute Centering */
+    /* REQ 1: Absolute Centering */
+    position: absolute;
     left: 50%;
     transform: translateX(-50%);
     display: inline-flex;
@@ -638,7 +639,7 @@
       cursor: pointer;
       transition: color 0.2s;
       font-size: 0.9rem;
-      padding: 8px 16px; /* Requirement: Adjusted padding */
+      padding: 8px 16px; /* Requirement: Adjusted padding (8px 16px) */
       border-radius: 999px;
       will-change: color;
   }
